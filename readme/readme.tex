@@ -8,7 +8,7 @@
 
 \title{Compton Scattering and Pion Photoproduction\\Event Generator\\\vskip5mm\large\emph{Designed for use with the MAMI A2 Geant4 Simulation}}
 \author{Philippe Martel}
-\date{23 October 2012}
+\date{18 January 2013}
 
 \begin{document}
 
@@ -84,15 +84,23 @@ Type './EventGen' from within this main directory, and follow the prompts to sel
 
 \subsection{Beam Energy}
 \begin{itemize}
-\item For Compton - $80-450$ MeV, in 5 MeV steps
-\item For Pi0P - $145-450$ MeV, in 5 MeV steps
-\item For PiPN - $155-450$ MeV, in 5 MeV steps
+\item For Compton - $80-450$ MeV
+\item For Pi0P - $145-450$ MeV
+\item For PiPN - $155-450$ MeV
 \end{itemize}
 
-\subsection{Number of Events}
+\subsection{Run Limits}
+For isotropic distributions, the only available limit for a `run' is to select the total number of events. For any other distributions, the user has the additional option to limit the `run' by time.
+
+\subsubsection{Run Time}
+For this option, the user is required to enter the endpoint energy of the electron beam and the photon energy of the highest counting tagger channel (the last channel that is `on'). This allows for limiting the rate in this channel to 1 MHz.
+
+The user must also enter the average tagging efficiency, the area density of the target (in cm$^{-2}$), and the running time desired (in minutes). For the sake of file sizes, and for importing into Geant4, the generator will stop at one million events and display the running time that correlates to.
+
+\subsubsection{Number of Events}
 
 \section{Parameter Files}
-For Normal and Incoherent reactions, parameter files are read in from the 'par' sub-directory, which is what causes the restriction on the energy step. (NOTE: If a finer step size, or a different Pi0P/PiPN solution, is required please contact me and I can provide the appropriate files)
+For Normal and Incoherent reactions, parameter files are read in from the 'par' sub-directory, currently in 5 MeV steps. Improvements to the code now allow for any decimal selection, as long as it's within the range of available files. (NOTE: If other energies, or a different Pi0P/PiPN solution, is required please contact me and I can provide the appropriate files)
 
 Description of columns in parameter files (using the observables nomenclature of: L.S. Barker, A. Donnachie, J.K. Storrow, Nucl. Phys. B 95 (1975) 347)
 \begin{itemize}
@@ -130,7 +138,9 @@ For Coherent reactions, cross sections are produced using a method provided by R
 \section{Output}
 Three root files are produced as output in the 'out' sub-directory. 'hist.root' contains histograms for testing, energy and angular distributions, etc. 'tree.root' is a tree file with the Lorentz vectors of the resulting particles for more detailed testing. 'ntpl.root' is then the ntuple for use in the A2 Geant4 simulation.
 
-%\section{For the Future}
-%Please feel free to let me know of any errors, concerns, suggestions, or requests. Thanks!
+\section{For the Future}
+Next step will be adding either a GUI interface, or at least the option to read in from a setup file (to eliminate the need to enter the same settings over and over again).
+
+Please feel free to let me know of any errors, concerns, suggestions, or requests. Thanks!
 
 \end{document}

@@ -4,7 +4,7 @@
 // Base class for event generators
 //
 // Author - P. Martel
-// Version - 02 November 2012
+// Version - 18 January 2013
 
 class BaseGen {
  protected:
@@ -14,6 +14,9 @@ class BaseGen {
   Bool_t bIncoh;
   Bool_t bCoher;
   Bool_t bIsotW;
+  Bool_t bSaveH;
+  Bool_t bSaveN;
+  Bool_t bSaveT;
   Int_t iBeamLo;
   Int_t iBeamHi;
   Int_t iBeamSt;
@@ -32,6 +35,7 @@ class BaseGen {
   TH3F *hCrossSec;
   TH1F *hCrossMax;
   TH1F *hCrossTot;
+  Double_t dConv;
   TLorentzVector ptot;
   TVector3 cm_to_lab, lab_to_cm;
   Float_t vtx_x, vtx_y, vtx_z;
@@ -39,6 +43,8 @@ class BaseGen {
   BaseGen(TString, TString, TString, Int_t, Int_t);
   ~BaseGen();
   void SetPol(Float_t, Float_t, Float_t, Float_t, Float_t, Float_t);
+  Double_t SetConv(Double_t);
+  void SetOut(Bool_t, Bool_t, Bool_t);
   void InitBase(const char*);
   void CrossGen();
   Float_t GetCross(Int_t, Int_t, Int_t);
@@ -73,6 +79,10 @@ BaseGen::BaseGen(TString name, TString target, TString base, Int_t beamlo, Int_t
   if(sProcName.Contains("Isot")) bIsotW = kTRUE;
   else bIsotW = kFALSE;
 
+  bSaveH = kFALSE;
+  bSaveN = kFALSE;
+  bSaveT = kFALSE;
+
   iBeamLo = beamlo;
   iBeamHi= beamhi;
   iBeamSt = (beamhi-beamlo);
@@ -85,6 +95,8 @@ BaseGen::BaseGen(TString name, TString target, TString base, Int_t beamlo, Int_t
   fTargT = 0;
   fTargL = 0;
   fTargP = 0;
+
+  dConv = 1.0;
 
   cout << "Constructing base generator" << endl;
 
@@ -108,8 +120,8 @@ BaseGen::~BaseGen(){
 
   cout << "Deleting base generator" << endl << endl;
 
-  delete fEnr;
-  delete fPar;
+  //delete fEnr;
+  //delete fPar;
   delete hCrossSec;
   delete hCrossMax;
   delete hCrossTot;
@@ -126,6 +138,36 @@ void BaseGen::SetPol(Float_t fBTin, Float_t fBLin, Float_t fBPin, Float_t fTTin,
   fTargT = fTTin;
   fTargL = fTLin;
   fTargP = fTPin;
+
+};
+
+Double_t BaseGen::SetConv(Double_t dCoIn){
+
+  // Set conversion factor
+
+  dConv = dCoIn;
+
+  // Check conversion factor
+
+  if((((hCrossTot->GetMaximum())*dConv) >= 1) && (dConv != 1)){
+    cout << "Max cross section times conversion factor is larger than 1" << endl;
+    cout << ((hCrossTot->GetMaximum())*dConv) << endl;
+    gSystem->Exit(0);
+  }
+
+  Double_t dScale = (0.9999/((hCrossTot->GetMaximum())*dConv));
+
+  return dScale;
+
+};
+
+void BaseGen::SetOut(Bool_t bHist, Bool_t bNtpl, Bool_t bTree){
+
+  // Set output selections
+
+  bSaveH = bHist;
+  bSaveN = bNtpl;
+  bSaveT = bTree;
 
 };
 
@@ -505,15 +547,15 @@ Bool_t BaseGen::Reject(Float_t fBeamE, Float_t fAng, Float_t fPhi){
   
   Bool_t bCheck = kFALSE;
 
-  Float_t fCVal = hCrossSec->Interpolate(fBeamE, fAng, fPhi);
-  //Float_t fCMax = hCrossMax->Interpolate(fBeamE);
-  Float_t fCMax = hCrossMax->GetMaximum();
+  Double_t dCVal = hCrossSec->Interpolate(fBeamE, fAng, fPhi);
+  Double_t dCMax = hCrossMax->Interpolate(fBeamE);
+  //Double_t dCMax = hCrossMax->GetMaximum();
 
-  // If the cross section for a given energy and angle is less than, or equal
-  // to, the maximum cross section (at that energy) at all energies times a 
+  // If the cross section for a given energy and angle is less than,
+  // or equal to, the maximum cross section at that energy times a 
   // random number between 0 and 1, then we reject that event.
 
-  if(fCVal <= (fCMax*gRandom->Rndm())) bCheck = kTRUE;
+  if(dCVal <= (dCMax*gRandom->Rndm())) bCheck = kTRUE;
 
   return bCheck;
 
@@ -541,33 +583,37 @@ void BaseGen::InitNtuple(Int_t npart, Int_t* ptag) {
   }
   
   names = beam + ":" + particles;
-
-  h1 = new TNtuple("h1", "TMCUserGenerator", names);
   
+  h1 = new TNtuple("h1", "TMCUserGenerator", names);
+
 }
 
 void BaseGen::SaveNtuple(TString sFile){
 
-  // Write Ntuple to file, obviously
-
-  TFile f1(sFile, "RECREATE", "MC_Ntuple_File");
-
-  h1->Write();
-
-  f1.Close();
+  if(bSaveN){
+    // Write Ntuple to file, obviously
+    
+    TFile f1(sFile, "RECREATE", "MC_Ntuple_File");
+    
+    h1->Write();
+    
+    f1.Close();
+  }
   
 };
 
 void BaseGen::SaveTree(TString sFile){
 
-  // Write tree to file, obviously
+  if(bSaveT){
+    // Write tree to file, obviously
+    
+    TFile f1(sFile, "RECREATE", "MC_Tree_File");
+    
+    t1->Write();
+    
+    f1.Close();
+  }
 
-  TFile f1(sFile, "RECREATE", "MC_Tree_File");
-
-  t1->Write();
-
-  f1.Close();
-  
 };
 
 void BaseGen::NewVertex() {

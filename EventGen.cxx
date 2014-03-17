@@ -2,7 +2,7 @@
 // Designed for use with the MAMI A2 Geant4 Simulation
 //
 // Author - P. Martel
-// Version - 02 November 2012
+// Version - 18 January 2013
 
 #ifndef __CINT__
 
@@ -49,7 +49,7 @@ int main()
   cout << "Compton Scattering and Pi0P/PiPN Photoproduction Event Generator" << endl;
   cout << "Designed for use with the MAMI A2 Geant4 Simulation" << endl << endl;
   cout << "Author - P. Martel" << endl;
-  cout << "Version - 17 October 2012" << endl;
+  cout << "Version - 18 January 2013" << endl;
   cout << "--------------------------------------------------" << endl;
 
   // Set seed for random generator, otherwise the program will produce the
@@ -76,6 +76,7 @@ int main()
 
   Float_t fBeamT, fBeamL, fBeamP, fTargT, fTargL, fTargP;
 
+  Float_t fBeamLo, fBeamHi;
   Int_t iBeamLo, iBeamHi;
 
   // Values to keep track of process and target selections
@@ -95,9 +96,11 @@ int main()
   Int_t iRecoG3id[6] = {14, 13, 49, 47, 67, 69};
 
   Int_t iProcN, iTypeN, iWghtN;
-  Int_t iProcS, iTypeS, iWghtS, iTargS, iRecoS, iNEvn;
+  Int_t iProcS, iTypeS, iWghtS, iTargS, iRecoS;
   Int_t iBPolS, iTPolS;
-  
+  Int_t iTimeS;
+  Int_t iNEvn = 1e6;
+
   // Choose reaction process
 
   cout << "Choose process:" << endl;
@@ -310,34 +313,48 @@ int main()
 
   // Select beam energy range and determine if parameter files are available
 
-  cout << "Enter minimum tagged photon energy (integers of MeV)" << endl;
-  cin >> iBeamLo;
+  cout << "Minimum tagged photon energy (MeV) = ";
+  cin >> fBeamLo;
   cout << "--------------------------------------------------" << endl;
 
-  cout << "Enter maximum tagged photon energy (integers of MeV)" << endl;
-  cin >> iBeamHi;
+  cout << "Maximum tagged photon energy (MeV) = ";
+  cin >> fBeamHi;
   cout << "--------------------------------------------------" << endl;
 
-  if(iBeamLo > iBeamHi){
+  if(fBeamLo > fBeamHi){
     cout << "Invalid energy range" << endl;
     return 0;
   }
 
   TString sBase = sProc[iProcS]+"_"+sWght;
+  Int_t iFileE;
+  iBeamLo = 0;
+  iBeamHi = 2000;
 
   if(iTypeS!=2 && iWghtS!=0){
     if(iProcS == 0) sBase += "_lab_";
     else sBase += "_cm_";
-    
-    TString sFnLo = sBase;
-    sFnLo += iBeamLo;
-    TString sFnHi = sBase;
-    sFnHi += iBeamHi;
 
-    if(!(lList->Contains(sFnLo) && lList->Contains(sFnHi))){
-      cout << "Invalid energy range" << endl;
+    itFile.Reset();
+    while((sfFile=(TSystemFile*)itFile())){
+      sFile = sfFile->GetName();
+      iLength = sFile.Length();
+      if((iLength >= 10) && sFile.BeginsWith(sBase)){
+	sFile.ReplaceAll(sBase,"");
+	iFileE = sFile.Atoi();
+	if((iFileE > iBeamLo) && (iFileE <= fBeamLo)) iBeamLo = iFileE;
+	if((iFileE < iBeamHi) && (iFileE >= fBeamHi)) iBeamHi = iFileE;
+      }
+    }
+    
+    if((iBeamLo == 0) || (iBeamHi == 2000)){
+      cout << "Out of range of parameter files" << endl;
       return 0;
     }
+  }
+  else{
+    iBeamLo = TMath::Floor(fBeamLo);
+    iBeamHi = TMath::Ceil(fBeamHi);
   }
 
   delete sdDir;
@@ -347,25 +364,151 @@ int main()
 
   // Make Bremsstrahlung distribution for event selection
 
-  TF1 *fBeam = new TF1("fBeam", "1/x", iBeamLo, iBeamHi);
+  TF1 *fBeam = new TF1("fBeam", "1/x", fBeamLo, fBeamHi);
   Bool_t bBeam = kTRUE;
   Double_t dBeam = iBeamLo;
+  Bool_t bTime = kTRUE;
 
   // If selecting one energy value, turn off Brem distribution and create
   // cross section table just below and just above this value
 
-  if(iBeamLo == iBeamHi){
+  if(fBeamLo == fBeamHi){
     bBeam = kFALSE;
-    dBeam = iBeamLo;
+    bTime = kFALSE;
+  }
+  if(iBeamLo == iBeamHi){
     iBeamLo -= 5;
     iBeamHi += 5;
   }
 
-  // Other initial setup parts
+  if(iWghtS == 0) bTime = kFALSE;
 
-  cout << "Enter number of events:" << endl;
-  cin >> iNEvn;
-  cout << "--------------------------------------------------" << endl << endl;
+  Float_t fEnrE = 450.0;
+  Float_t fEnrP = 160.0;
+
+  Double_t dTagC = 0;
+  Double_t dTagS = 1;
+  Double_t dTagM = 1;
+
+  // Variables for conversion constant
+
+  Double_t dUBCM = 1e-30;
+  Double_t dEffD = 1.0;
+  Double_t dEffT = 1.0;
+  Double_t dDenT = 4e23;
+  Double_t dTime = 1;
+
+  if(bTime){
+    
+    cout << "Choose run limit:" << endl;
+    cout << "1) Run time" << endl;
+    cout << "2) Number of events" << endl;
+    
+    cin >> iTimeS;
+    
+    if(iTimeS==2) bTime = kFALSE;
+    else if(iTimeS<1 || iTimeS>2){
+      cout << "Invalid run limit" << endl;
+      return 0;
+    }
+  }
+
+  if(bTime){
+
+    // Variables for timed running
+
+    cout << "Enter electron beam energy (MeV)" << endl;
+    cin >> fEnrE;
+    cout << "--------------------------------------------------" << endl;
+
+    cout << "Enter lowest tagged photon energy (MeV)" << endl;
+    cout << "(below which the tagger is turned off)" << endl;
+    cin >> fEnrP;
+    cout << "--------------------------------------------------" << endl;
+
+    if(fEnrP == fBeamLo) dTagM = 1e6*60;
+    else if(fEnrP < fBeamLo){
+      dTagM = 1e6*60*fEnrP/fBeamLo;
+      fEnrP = fBeamLo;
+    }
+    else{
+      cout << "Tagger is turned off for part of the desired energy range" << endl;
+      return 0;
+    }
+
+    // Tagger scalers are deadtime inhibited, so the calculation
+    // automatically takes the livetime into account
+    /*
+    cout << "Enter average livetime" << endl;
+    cin >> dEffD;
+    cout << "--------------------------------------------------" << endl;
+    if((dEffD>1) || (dEffD<0)){
+      cout << "Invalid livetime" << endl;
+      return 0;
+    }
+    */
+
+    cout << "Enter average tagging efficiency" << endl;
+    cin >> dEffT;
+    cout << "--------------------------------------------------" << endl;
+    if((dEffT>1) || (dEffT<0)){
+      cout << "Invalid tagging efficiency" << endl;
+      return 0;
+    }
+
+    cout << "Enter area target density (4.2e23 LH2, 9.1e22 FST)" << endl;
+    cin >> dDenT;
+    cout << "--------------------------------------------------" << endl;
+    if(dDenT<0){
+      cout << "Invalid target density" << endl;
+      return 0;
+    }
+
+    cout << "Enter running time (min)" << endl;
+    cout << "(though will still stop at a million events)" << endl;
+    cin >> dTime;
+    cout << "--------------------------------------------------" << endl;
+    if(dTime<0){
+      cout << "Invalid running time" << endl;
+      return 0;
+    }
+    dTagM = dTagM*dTime;
+
+  }
+  else{
+
+    cout << "Enter number of events:" << endl;
+    cin >> iNEvn;
+    cout << "--------------------------------------------------" << endl << endl;
+    if(iNEvn<0){
+      cout << "Invalid number of events" << endl;
+      return 0;
+    }
+
+  }
+
+  // Determine width of highest counting tagger channel, roughly
+
+  TF1 *fChan = new TF1("fChan", "pol4", 0.0, 1.0);
+  fChan->SetParameters(0.001415,0.003859,0.001417,-0.007596,0.004085);
+  Float_t fEnrL = fEnrP;
+  Float_t fEnrH = (fEnrP+(fEnrE*(fChan->Eval((fEnrE-fEnrP)/fEnrE))));
+
+  // Determine conversion constant
+
+  Double_t dConv = 1;
+  if(bTime){
+    dConv = dUBCM*dEffD*dEffT*dDenT;
+    if((iProcS == 0) && (iTypeS != 2)) dConv = dConv*0.001;
+  }
+
+  // Set upper limit of scaling factor such that it would
+  // require 100 throws to fill the max couting tagger channel
+
+  Double_t dScalM = (dTagM/100.0);
+  Double_t dScale = 1.0;
+
+  // End of setup
 
   cout << sName << endl << endl;
   cout << "--------------------------------------------------" << endl << endl;
@@ -380,19 +523,31 @@ int main()
 
     // Create and initialize generator
 
-    CompGen *cgen = new CompGen(sName,sTarg[iTargS],sBase,fTargMass[iTargS],fRecoMass[iRecoS],iRecoG3id[iRecoS],iBeamLo,iBeamHi);
-    cgen->SetPol(fBeamT, fBeamL, fBeamP, fTargT, fTargL, fTargP);
-    cgen->Init();
+    CompGen *pgen = new CompGen(sName,sTarg[iTargS],sBase,fTargMass[iTargS],fRecoMass[iRecoS],iRecoG3id[iRecoS],iBeamLo,iBeamHi);
+    pgen->SetPol(fBeamT, fBeamL, fBeamP, fTargT, fTargL, fTargP);
+    pgen->SetOut(kTRUE,kTRUE,kTRUE);
+    pgen->Init();
+    dScale = pgen->SetConv(dConv);
+    if(bTime && dScale>dScalM) dScale = dScalM;
+    dTagS = dScale;
+    dScale = pgen->SetConv(dConv*dScale);
 
     // Events loop
 
     swTimer.Start();
-    while(i<iNEvn){
-      if(bBeam) dBeam = fBeam->GetRandom();
-      if(cgen->NewEvent(dBeam)) i++;
-      else{
-	j++;
-	continue;
+    if(bTime){
+      while(i<iNEvn && dTagC<dTagM){
+	dBeam = fBeam->GetRandom();
+	if(dBeam>=fEnrL && dBeam<fEnrH) dTagC += dTagS;
+	if(pgen->NewEvent(dBeam)) i++;
+	else j++;
+      }
+    }
+    else{
+      while(i<iNEvn){
+	if(bBeam) dBeam = fBeam->GetRandom();
+	if(pgen->NewEvent(dBeam)) i++;
+	else j++;
       }
     }
     swTimer.Stop();
@@ -401,14 +556,18 @@ int main()
   
     cout << i << " events accepted" << endl;
     cout << j << " events rejected" << endl;
+    if(bTime){
+      cout << dTagC << " events tagged (max of " << dTagM << ")" << endl;
+      cout << "Equates to " << dTime*dTagC/dTagM << " min run time" << endl;
+    }
     cout << "Computed in " << swTimer.RealTime() << " sec." << endl << endl;
     cout << "--------------------------------------------------" << endl;
     cout << endl;
 
-    cgen->SaveHists(sFile1);
-    cgen->SaveNtuple(sFile2);
-    cgen->SaveTree(sFile3);
-    delete cgen;
+    pgen->SaveHists(sFile1);
+    pgen->SaveNtuple(sFile2);
+    pgen->SaveTree(sFile3);
+    delete pgen;
   }
 
   // Pi0P Photoproduction generator
@@ -419,17 +578,29 @@ int main()
 
     Pi0PGen *pgen = new Pi0PGen(sName,sTarg[iTargS],sBase,fTargMass[iTargS],fRecoMass[iRecoS],iRecoG3id[iRecoS],iBeamLo,iBeamHi);
     pgen->SetPol(fBeamT, fBeamL, fBeamP, fTargT, fTargL, fTargP);
+    pgen->SetOut(kTRUE,kTRUE,kTRUE);
     pgen->Init();
+    dScale = pgen->SetConv(dConv);
+    if(bTime && dScale>dScalM) dScale = dScalM;
+    dTagS = dScale;
+    dScale = pgen->SetConv(dConv*dScale);
 
     // Events loop
 
     swTimer.Start();
-    while(i<iNEvn){
-      if(bBeam) dBeam = fBeam->GetRandom();
-      if(pgen->NewEvent(dBeam)) i++;
-      else{
-	j++;
-	continue;
+    if(bTime){
+      while(i<iNEvn && dTagC<dTagM){
+	dBeam = fBeam->GetRandom();
+	if(dBeam>=fEnrL && dBeam<fEnrH) dTagC += dTagS;
+	if(pgen->NewEvent(dBeam)) i++;
+	else j++;
+      }
+    }
+    else{
+      while(i<iNEvn){
+	if(bBeam) dBeam = fBeam->GetRandom();
+	if(pgen->NewEvent(dBeam)) i++;
+	else j++;
       }
     }
     swTimer.Stop();
@@ -438,6 +609,10 @@ int main()
   
     cout << i << " events accepted" << endl;
     cout << j << " events rejected" << endl;
+    if(bTime){
+      cout << dTagC << " events tagged (max of " << dTagM << ")" << endl;
+      cout << "Equates to " << dTime*dTagC/dTagM << " min run time" << endl;
+    }
     cout << "Computed in " << swTimer.RealTime() << " sec." << endl << endl;
     cout << "--------------------------------------------------" << endl;
     cout << endl;
@@ -456,17 +631,29 @@ int main()
 
     PiPNGen *pgen = new PiPNGen(sName,sTarg[iTargS],sBase,fTargMass[iTargS],fRecoMass[iRecoS],iRecoG3id[iRecoS],iBeamLo,iBeamHi);
     pgen->SetPol(fBeamT, fBeamL, fBeamP, fTargT, fTargL, fTargP);
+    pgen->SetOut(kTRUE,kTRUE,kTRUE);
     pgen->Init();
+    dScale = pgen->SetConv(dConv);
+    if(bTime && dScale>dScalM) dScale = dScalM;
+    dTagS = dScale;
+    dScale = pgen->SetConv(dConv*dScale);
 
     // Events loop
 
     swTimer.Start();
-    while(i<iNEvn){
-      if(bBeam) dBeam = fBeam->GetRandom();
-      if(pgen->NewEvent(dBeam)) i++;
-      else{
-	j++;
-	continue;
+    if(bTime){
+      while(i<iNEvn && dTagC<dTagM){
+	dBeam = fBeam->GetRandom();
+	if(dBeam>=fEnrL && dBeam<fEnrH) dTagC += dTagS;
+	if(pgen->NewEvent(dBeam)) i++;
+	else j++;
+      }
+    }
+    else{
+      while(i<iNEvn){
+	if(bBeam) dBeam = fBeam->GetRandom();
+	if(pgen->NewEvent(dBeam)) i++;
+	else j++;
       }
     }
     swTimer.Stop();
@@ -475,6 +662,10 @@ int main()
   
     cout << i << " events accepted" << endl;
     cout << j << " events rejected" << endl;
+    if(bTime){
+      cout << dTagC << " events tagged (max of " << dTagM << ")" << endl;
+      cout << "Equates to " << dTime*dTagC/dTagM << " min run time" << endl;
+    }
     cout << "Computed in " << swTimer.RealTime() << " sec." << endl << endl;
     cout << "--------------------------------------------------" << endl;
     cout << endl;
@@ -482,6 +673,7 @@ int main()
     pgen->SaveHists(sFile1);
     pgen->SaveNtuple(sFile2);
     pgen->SaveTree(sFile3);
+
     delete pgen;
   }
 

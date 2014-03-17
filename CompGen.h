@@ -4,7 +4,7 @@
 // Compton scattering event generator class
 //
 // Author - P. Martel
-// Version - 02 November 2012
+// Version - 18 January 2013
 
 class CompGen : public BaseGen {
  protected:
@@ -94,13 +94,15 @@ void CompGen::Init(){
   cout << "--------------------------------------------------" << endl << endl;
   cout << "Running" << endl << endl;
 
-  t1->Branch("Phot",&fPhotEk);
-  t1->Branch("PhotCM",&fPhotEkCM);
-  t1->Branch("Scat",&lvScat);
-  t1->Branch("ScatCM",&lvScatCM);
-  t1->Branch("Reco",&lvReco);
-  t1->Branch("RecoCM",&lvRecoCM);
-  
+  if(bSaveT){
+    t1->Branch("Phot",&fPhotEk);
+    t1->Branch("PhotCM",&fPhotEkCM);
+    t1->Branch("Scat",&lvScat);
+    t1->Branch("ScatCM",&lvScatCM);
+    t1->Branch("Reco",&lvReco);
+    t1->Branch("RecoCM",&lvRecoCM);
+  }
+
 };
 
 void CompGen::InitCoher(){
@@ -111,7 +113,8 @@ void CompGen::InitCoher(){
   cout << "--------------------------------------------------" << endl << endl;
   cout << "Constructing Coherent cross sections table" << endl;
 
-  Int_t iEnrN = 0, iAngN = 0;
+  Int_t iParN = 0, iEnrN = 0, iAngN = 0, iNPar = 9;
+
   Float_t fCPeak, fSigTh, fHel40, fCar40, fRatio = 1;
 
   if(((iBeamHi-iBeamLo)%5) == 0) iNEnr = (1+((iBeamHi-iBeamLo)/5));
@@ -124,6 +127,7 @@ void CompGen::InitCoher(){
   
   const Int_t iNEnrC = iNEnr;
   const Int_t iNAngC = iNAng;
+  const Int_t iNParC = iNPar;
 
   // Determine step sizes for energy and angle
   
@@ -132,9 +136,16 @@ void CompGen::InitCoher(){
 
   // Create arrays to hold input
 
-  fPar = new Float_t**[2];
-  fPar[0] = new Float_t*[iNEnrC];
-  fPar[1] = new Float_t*[iNEnrC];
+  fPar = new Float_t**[iNParC];
+  for(iParN=0; iParN<iNPar; iParN++){
+    fPar[iParN] = new Float_t*[iNEnrC];
+    for(iEnrN=0; iEnrN<iNEnr; iEnrN++){
+      fPar[iParN][iEnrN] = new Float_t[iNAngC];
+      for(iAngN=0; iAngN<iNAng; iAngN++){
+	fPar[iParN][iEnrN][iAngN] = 0;
+      }
+    }
+  }
 
   fEnr = new Float_t[iNEnrC];
 
@@ -175,24 +186,32 @@ void CompGen::InitCoher(){
 
 Bool_t CompGen::NewEvent(Float_t fBeamE){
 
-  // Construct new event
+  Bool_t bCheck = kTRUE;
 
-  Reset();
-  NewVertex();
+  Double_t dCTot = hCrossTot->Interpolate(fBeamE);
+  if(!bIsotW && ((dCTot*dConv) <= (gRandom->Rndm()))) return kFALSE;
 
-  // Set initial state particles
+  while(bCheck){
 
-  pPhoton.SetP4Lab(fBeamE,fBeamE,0,0);
-  pTarget.SetP4Lab(pTarget.Mass,0,0,0);
+    // Construct new event
 
-  // Introduce a collision to determine energy, momentum, and direction
-  // of final states particles
+    Reset();
+    NewVertex();
 
-  Collision2B(pPhoton, pTarget, pScatter, pRecoil);
+    // Set initial state particles
 
-  // Check whether to reject the event based on the selected weighting
+    pPhoton.SetP4Lab(fBeamE,fBeamE,0,0);
+    pTarget.SetP4Lab(pTarget.Mass,0,0,0);
 
-  if(Reject(fBeamE,pScatter.Theta,pScatter.Phi)) return kFALSE;
+    // Introduce a collision to determine energy, momentum, and direction
+    // of final states particles
+
+    Collision2B(pPhoton, pTarget, pScatter, pRecoil);
+
+    // Check whether to reject the event based on the selected weighting
+
+    bCheck = Reject(fBeamE,pScatter.Theta,pScatter.Phi);
+  }
 
   // For an incoherent process, use the previously determined directions of the
   // final state particles but determine the proper energies and momenta
@@ -216,7 +235,7 @@ Bool_t CompGen::NewEvent(Float_t fBeamE){
   
   // Fill ntuple
 
-  h1->Fill(var);
+  if(bSaveN) h1->Fill(var);
   
   // Fill tree
 
@@ -227,7 +246,7 @@ Bool_t CompGen::NewEvent(Float_t fBeamE){
   lvReco = pRecoil.P4;
   lvRecoCM = pRecoil.P4CM;
 
-  t1->Fill();
+  if(bSaveT) t1->Fill();
 
   // Fill other test histograms
 
@@ -256,66 +275,68 @@ void CompGen::Reset(){
 
 void CompGen::SaveHists(TString sFile){
 
-  // Write out test histograms
-
-  cout << "Saving histograms" << endl;
-
-  Int_t i;
-
-  TFile f1(sFile, "RECREATE", "MC_Hists_File");
-
-  pPhoton.WriteHists();
-  pTarget.WriteHists();
-  pScatter.WriteHists();
-  pRecoil.WriteHists();
-
-  hPvPLo->Write();
-  hPvPHi->Write();
-
-  TCanvas *cPvP = new TCanvas("cPvP", "Proton vs Photon Angle", 800, 1000);
-
-  TLine *xlo = new TLine(20,0,20,180);
-  TLine *xhi = new TLine(160,0,160,180);
-  TLine *ylo = new TLine(0,20,180,20);
-  TLine *yhi = new TLine(0,160,180,160);
-
-  Int_t iArCoo[9][4] = {{30,30,10,10},{90,30,90,10},{150,30,170,10},{30,90,10,90},{90,90,90,90},{150,90,170,90},{30,150,10,170},{90,150,90,170},{150,150,170,170}};
-  Int_t iPtCoo[9][4] = {{30,30,50,40},{80,30,100,40},{130,30,150,40},{30,85,50,95},{80,85,100,95},{130,85,150,95},{30,140,50,150},{80,140,100,150},{130,140,150,150}};
-  TString sPtTxt[9] = {"TAPS,TAPS","CB,TAPS","Out,TAPS","TAPS,CB","CB,CB","Out,CB","TAPS,Out","CB,Out","Out,Out"};
-
-  TArrow *ar[9];
-  TPaveText *pt[9];
-
-  for(i=0; i<9; i++){
-    ar[i] = new TArrow(iArCoo[i][0],iArCoo[i][1],iArCoo[i][2],iArCoo[i][3],0.01,"|>");
-    ar[i]->SetLineWidth(2);
-    ar[i]->SetLineColor(4);
-    ar[i]->SetFillColor(4);
-
-    pt[i] = new TPaveText(iPtCoo[i][0],iPtCoo[i][1],iPtCoo[i][2],iPtCoo[i][3]);
-    pt[i]->AddText(sPtTxt[i]);
+  if(bSaveH){
+    // Write out test histograms
+    
+    cout << "Saving histograms" << endl;
+    
+    Int_t i;
+    
+    TFile f1(sFile, "RECREATE", "MC_Hists_File");
+    
+    pPhoton.WriteHists();
+    pTarget.WriteHists();
+    pScatter.WriteHists();
+    pRecoil.WriteHists();
+    
+    hPvPLo->Write();
+    hPvPHi->Write();
+    
+    TCanvas *cPvP = new TCanvas("cPvP", "Proton vs Photon Angle", 800, 1000);
+    
+    TLine *xlo = new TLine(20,0,20,180);
+    TLine *xhi = new TLine(160,0,160,180);
+    TLine *ylo = new TLine(0,20,180,20);
+    TLine *yhi = new TLine(0,160,180,160);
+    
+    Int_t iArCoo[9][4] = {{30,30,10,10},{90,30,90,10},{150,30,170,10},{30,90,10,90},{90,90,90,90},{150,90,170,90},{30,150,10,170},{90,150,90,170},{150,150,170,170}};
+    Int_t iPtCoo[9][4] = {{30,30,50,40},{80,30,100,40},{130,30,150,40},{30,85,50,95},{80,85,100,95},{130,85,150,95},{30,140,50,150},{80,140,100,150},{130,140,150,150}};
+    TString sPtTxt[9] = {"TAPS,TAPS","CB,TAPS","Out,TAPS","TAPS,CB","CB,CB","Out,CB","TAPS,Out","CB,Out","Out,Out"};
+    
+    TArrow *ar[9];
+    TPaveText *pt[9];
+    
+    for(i=0; i<9; i++){
+      ar[i] = new TArrow(iArCoo[i][0],iArCoo[i][1],iArCoo[i][2],iArCoo[i][3],0.01,"|>");
+      ar[i]->SetLineWidth(2);
+      ar[i]->SetLineColor(4);
+      ar[i]->SetFillColor(4);
+      
+      pt[i] = new TPaveText(iPtCoo[i][0],iPtCoo[i][1],iPtCoo[i][2],iPtCoo[i][3]);
+      pt[i]->AddText(sPtTxt[i]);
+    }
+    
+    hPvPLo->SetStats(kFALSE);
+    hPvPLo->Draw();
+    hPvPHi->Draw("same");
+    xlo->Draw("same");
+    xhi->Draw("same");
+    ylo->Draw("same");
+    yhi->Draw("same");
+    for(i=0; i<9; i++){
+      if(i!=4) ar[i]->Draw();
+      pt[i]->Draw();
+    }
+    
+    cPvP->Write();
+    
+    hPvP->Write();
+    hMiM->Write();
+    
+    hCrossMax->Write();
+    hCrossTot->Write();
+    
+    f1.Close();
   }
-
-  hPvPLo->SetStats(kFALSE);
-  hPvPLo->Draw();
-  hPvPHi->Draw("same");
-  xlo->Draw("same");
-  xhi->Draw("same");
-  ylo->Draw("same");
-  yhi->Draw("same");
-  for(i=0; i<9; i++){
-    if(i!=4) ar[i]->Draw();
-    pt[i]->Draw();
-  }
-
-  cPvP->Write();
-
-  hPvP->Write();
-  hMiM->Write();
-
-  hCrossMax->Write();
-  hCrossTot->Write();
-
-  f1.Close();
 
 };

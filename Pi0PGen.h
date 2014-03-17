@@ -4,7 +4,7 @@
 // Pi0P photoproduction event generator class
 //
 // Author - P. Martel
-// Version - 02 November 2012
+// Version - 18 January 2013
 
 class Pi0PGen : public BaseGen {
  protected:
@@ -135,7 +135,7 @@ void Pi0PGen::InitCoher(){
   cout << "--------------------------------------------------" << endl << endl;
   cout << "Constructing Coherent cross sections table" << endl;
 
-  Int_t iEnrN = 0, iAngN = 0;
+  Int_t iParN = 0, iEnrN = 0, iAngN = 0, iNPar = 9;
 
   Float_t fCPeak, fKpi, fFFSlope, fQ2, fFq2, fCMax = 0, fScale, fRatio = 1;
 
@@ -149,6 +149,7 @@ void Pi0PGen::InitCoher(){
 
   const Int_t iNEnrC = iNEnr;
   const Int_t iNAngC = iNAng;
+  const Int_t iNParC = iNPar;
 
   // Determine step sizes for energy and angle
   
@@ -157,9 +158,16 @@ void Pi0PGen::InitCoher(){
 
   // Create arrays to hold input
 
-  fPar = new Float_t**[2];
-  fPar[0] = new Float_t*[iNEnrC];
-  fPar[1] = new Float_t*[iNEnrC];
+  fPar = new Float_t**[iNParC];
+  for(iParN=0; iParN<iNPar; iParN++){
+    fPar[iParN] = new Float_t*[iNEnrC];
+    for(iEnrN=0; iEnrN<iNEnr; iEnrN++){
+      fPar[iParN][iEnrN] = new Float_t[iNAngC];
+      for(iAngN=0; iAngN<iNAng; iAngN++){
+	fPar[iParN][iEnrN][iAngN] = 0;
+      }
+    }
+  }
 
   fEnr = new Float_t[iNEnrC];
 
@@ -215,24 +223,32 @@ void Pi0PGen::InitCoher(){
 
 Bool_t Pi0PGen::NewEvent(Float_t fBeamE){
 
-  // Construct new event
+  Bool_t bCheck = kTRUE;
 
-  Reset();
-  NewVertex();
+  Double_t dCTot = hCrossTot->Interpolate(fBeamE);
+  if(!bIsotW && ((dCTot*dConv) <= (gRandom->Rndm()))) return kFALSE;
 
-  // Set initial state particles
+  while(bCheck){
 
-  pPhoton.SetP4Lab(fBeamE,fBeamE,0,0);
-  pTarget.SetP4Lab(pTarget.Mass,0,0,0);
+    // Construct new event
 
-  // Introduce a collision to determine energy, momentum, and direction
-  // of final states particles
+    Reset();
+    NewVertex();
 
-  Collision2B(pPhoton, pTarget, pPi0, pRecoil);
+    // Set initial state particles
 
-  // Check whether to reject the event based on the selected weighting
+    pPhoton.SetP4Lab(fBeamE,fBeamE,0,0);
+    pTarget.SetP4Lab(pTarget.Mass,0,0,0);
 
-  if(Reject(fBeamE,pPi0.ThetaCM,pPi0.PhiCM)) return kFALSE;
+    // Introduce a collision to determine energy, momentum, and direction
+    // of final states particles
+
+    Collision2B(pPhoton, pTarget, pPi0, pRecoil);
+
+    // Check whether to reject the event based on the selected weighting
+
+    bCheck = Reject(fBeamE,pPi0.ThetaCM,pPi0.PhiCM);
+  }
 
   // For an incoherent process, use the previously determined directions of the
   // final state particles but determine the proper energies and momenta

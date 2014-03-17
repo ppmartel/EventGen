@@ -1,6 +1,12 @@
+/////////////////////////
 Original: 21 June 2011
+/////////////////////////
 
+
+/////////////////////////
 Update: 23 October 2012
+/////////////////////////
+
    Adjustments:
 	Changed 'pow' to 'TMath::Power'
 	Changed 'exp' to 'TMath::Exp'
@@ -23,9 +29,31 @@ Update: 23 October 2012
 	Included linear beam and longitudinal target polarizations, with the various interplays between them (although the parameters for linear beam and polarized target combinations are not included for Compton yet)
 	Using the same parameter notation for Compton as for pion photoproduction, the generation of both polarized and unpolarized cross sections was merged into one subroutine in BaseGen.h (incoherent must still be done separately)
 
+
+/////////////////////////
 Update: 02 November 2012
+/////////////////////////
+
    Corrections:
         Changed Reject subroutine in BaseGen.h to use the maximum cross section over all energies instead of at the current thrown energy.
 
    Additions:
         Added the max and total cross section histograms to the histogram output file.
+
+
+/////////////////////////
+Update: 18 January 2013
+/////////////////////////
+
+   The main goal of this version was to incorporate running time and beam/DAQ rates into the simulation to allow for modeling an entire beam time (rather than a strict number of events). To accomplish this:
+
+	In BaseGen.h, added conversion factor (dConv) to convert from cross-section to counts. Can also arbitrarily scale this such that the maximum total cross section is just below 1, minimizing computing time. This conversion factor is set in EventGen.cxx, with input from the user for target density and efficiency. Note that the Compton conversion is multiplied by 0.001 to first convert its nanobarns to microbarns (which pi0 and pi+ cross-sections are already in).
+	In each reaction generator (CompGen.h for example), the NewEvent subroutine now additionally throws a random number from 0 to 1. For non-isotropic distributions, if the thrown number is larger than the total cross-section (at the chosen beam energy) times the conversion factor noted above, the event is rejected. If it's accepted however, it then loops through events until one satisfies the Reject subroutine check. For this to work properly, the Reject subroutine in BaseGen.h was returned to the old method (see note in 02 November 2012), though now using Double_t instead of Float_t for the cross-sections.
+	To determine the total number of events, the user can now select either a specific number, or a specific amount of time. For the latter, the user must also enter the livetime for the system and the average tagging efficiency. In addition, the user must specify the tagged photon energy below which the tagger is turned off. This then becomes the maximum counting channel, for which the default rate is 1 MHz (adjustable).
+
+   Corrections:
+	Fixed the coherent generator (had broken it previously and not realized)
+
+   Adjustments:
+	To also improve computing time and file sizes, included options for saving each of the three root files.
+	Changed the energy range determination, such that it no longer needs to be fixed at parameter files, as long as it's encompassed by said files. For instance, previously a desired range of 273.3 to 302.8 required using a range of 270 (or 275) to 300 (or 305), since those were available parameter files. Now the actual range can be used.

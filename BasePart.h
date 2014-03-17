@@ -4,7 +4,7 @@
 // Base particle class for use in the event generator
 //
 // Author - P. Martel
-// Version - 02 November 2011
+// Version - 18 January 2013
 
 class BasePart {
  protected:

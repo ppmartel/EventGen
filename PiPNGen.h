@@ -4,7 +4,7 @@
 // PiPN photoproduction event generator class
 //
 // Author - P. Martel
-// Version - 02 November 2012
+// Version - 18 January 2013
 
 class PiPNGen : public BaseGen {
  protected:
@@ -83,35 +83,45 @@ void PiPNGen::Init(){
   cout << "--------------------------------------------------" << endl << endl;
   cout << "Running" << endl << endl;
 
-  t1->Branch("Phot",&fPhotEk);
-  t1->Branch("PhotCM",&fPhotEkCM);
-  t1->Branch("PiP",&lvPiP);
-  t1->Branch("PiPCM",&lvPiPCM);
-  t1->Branch("Reco",&lvReco);
-  t1->Branch("RecoCM",&lvRecoCM);
+  if(bSaveT){
+    t1->Branch("Phot",&fPhotEk);
+    t1->Branch("PhotCM",&fPhotEkCM);
+    t1->Branch("PiP",&lvPiP);
+    t1->Branch("PiPCM",&lvPiPCM);
+    t1->Branch("Reco",&lvReco);
+    t1->Branch("RecoCM",&lvRecoCM);
+  }
 
 };
 
 Bool_t PiPNGen::NewEvent(Float_t fBeamE){
 
-  // Construct new event
+  Bool_t bCheck = kTRUE;
 
-  Reset();
-  NewVertex();
+  Double_t dCTot = hCrossTot->Interpolate(fBeamE);
+  if(!bIsotW && ((dCTot*dConv) <= (gRandom->Rndm()))) return kFALSE;
 
-  // Set initial state particles
+  while(bCheck){
 
-  pPhoton.SetP4Lab(fBeamE,fBeamE,0,0);
-  pTarget.SetP4Lab(pTarget.Mass,0,0,0);
+    // Construct new event
 
-  // Introduce a collision to determine energy, momentum, and direction
-  // of final states particles
+    Reset();
+    NewVertex();
 
-  Collision2B(pPhoton, pTarget, pPiP, pRecoil);
+    // Set initial state particles
 
-  // Check whether to reject the event based on the selected weighting
+    pPhoton.SetP4Lab(fBeamE,fBeamE,0,0);
+    pTarget.SetP4Lab(pTarget.Mass,0,0,0);
 
-  if(Reject(fBeamE,pPiP.ThetaCM,pPiP.PhiCM)) return kFALSE;
+    // Introduce a collision to determine energy, momentum, and direction
+    // of final states particles
+
+    Collision2B(pPhoton, pTarget, pPiP, pRecoil);
+
+    // Check whether to reject the event based on the selected weighting
+
+    bCheck = Reject(fBeamE,pPiP.ThetaCM,pPiP.PhiCM);
+  }
 
   // For an incoherent process, use the previously determined directions of the
   // final state particles but determine the proper energies and momenta
@@ -141,7 +151,7 @@ Bool_t PiPNGen::NewEvent(Float_t fBeamE){
   
   // Fill ntuple
 
-  h1->Fill(var);
+  if(bSaveN) h1->Fill(var);
   
   // Fill tree
 
@@ -152,7 +162,7 @@ Bool_t PiPNGen::NewEvent(Float_t fBeamE){
   lvReco = pRecoil.P4;
   lvRecoCM = pRecoil.P4CM;
 
-  t1->Fill();
+  if(bSaveT) t1->Fill();
 
   // Fill other test histograms
 
@@ -181,28 +191,30 @@ void PiPNGen::Reset(){
 
 void PiPNGen::SaveHists(TString sFile){
 
-  // Write out test histograms
+  if(bSaveH){
+    // Write out test histograms
+    
+    cout << "Saving histograms" << endl;
+    
+    //Int_t i;
+    
+    TFile f1(sFile, "RECREATE", "MC_Hists_File");
+    
+    pPhoton.WriteHists();
+    pTarget.WriteHists();
+    pPiP.WriteHists();
+    pRecoil.WriteHists();
+    
+    hMiM->Write();
 
-  cout << "Saving histograms" << endl;
-
-  //Int_t i;
-
-  TFile f1(sFile, "RECREATE", "MC_Hists_File");
-
-  pPhoton.WriteHists();
-  pTarget.WriteHists();
-  pPiP.WriteHists();
-  pRecoil.WriteHists();
-
-  hMiM->Write();
-
-  hTpvtp->Write();
-  hTpvtpi->Write();
-  htpvtpi->Write();
-
-  hCrossMax->Write();
-  hCrossTot->Write();
-
-  f1.Close();
+    hTpvtp->Write();
+    hTpvtpi->Write();
+    htpvtpi->Write();
+    
+    hCrossMax->Write();
+    hCrossTot->Write();
+    
+    f1.Close();
+  }
 
 };
