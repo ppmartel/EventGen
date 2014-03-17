@@ -2,7 +2,7 @@
 // Designed for use with the MAMI A2 Geant4 Simulation
 //
 // Author - P. Martel
-// Version - 23 October 2012
+// Version - 02 November 2012
 
 #ifndef __CINT__
 

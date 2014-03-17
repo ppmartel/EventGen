@@ -4,7 +4,7 @@
 // PiPN photoproduction event generator class
 //
 // Author - P. Martel
-// Version - 23 October 2012
+// Version - 02 November 2012
 
 class PiPNGen : public BaseGen {
  protected:
@@ -199,6 +199,9 @@ void PiPNGen::SaveHists(TString sFile){
   hTpvtp->Write();
   hTpvtpi->Write();
   htpvtpi->Write();
+
+  hCrossMax->Write();
+  hCrossTot->Write();
 
   f1.Close();
 

@@ -4,7 +4,7 @@
 // Compton scattering event generator class
 //
 // Author - P. Martel
-// Version - 23 October 2012
+// Version - 02 November 2012
 
 class CompGen : public BaseGen {
  protected:
@@ -312,6 +312,9 @@ void CompGen::SaveHists(TString sFile){
 
   hPvP->Write();
   hMiM->Write();
+
+  hCrossMax->Write();
+  hCrossTot->Write();
 
   f1.Close();
 

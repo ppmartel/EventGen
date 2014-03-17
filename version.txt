@@ -22,3 +22,10 @@ Update: 23 October 2012
 	Added the ability to adjust phi orientation of the polarization
 	Included linear beam and longitudinal target polarizations, with the various interplays between them (although the parameters for linear beam and polarized target combinations are not included for Compton yet)
 	Using the same parameter notation for Compton as for pion photoproduction, the generation of both polarized and unpolarized cross sections was merged into one subroutine in BaseGen.h (incoherent must still be done separately)
+
+Update: 02 November 2012
+   Corrections:
+        Changed Reject subroutine in BaseGen.h to use the maximum cross section over all energies instead of at the current thrown energy.
+
+   Additions:
+        Added the max and total cross section histograms to the histogram output file.

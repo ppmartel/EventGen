@@ -4,7 +4,7 @@
 // Pi0P photoproduction event generator class
 //
 // Author - P. Martel
-// Version - 23 October 2012
+// Version - 02 November 2012
 
 class Pi0PGen : public BaseGen {
  protected:
@@ -404,6 +404,9 @@ void Pi0PGen::SaveHists(TString sFile){
   hTpvtp->Write();
   hTpvtpi->Write();
   htpvtpi->Write();
+
+  hCrossMax->Write();
+  hCrossTot->Write();
 
   f1.Close();
 

@@ -4,7 +4,7 @@
 // Base class for event generators
 //
 // Author - P. Martel
-// Version - 23 October 2012
+// Version - 02 November 2012
 
 class BaseGen {
  protected:
@@ -89,10 +89,14 @@ BaseGen::BaseGen(TString name, TString target, TString base, Int_t beamlo, Int_t
   cout << "Constructing base generator" << endl;
 
   // Initialize cross section histograms, bin sizes will be adjusted later
-
+  /*
   hCrossSec = new TH3F(sProcName,sProcName,iBeamSt+1,iBeamLo,(iBeamHi+1),181,0,181,181,0,181);
   hCrossMax = new TH1F(sProcName+"Max",(sProcName+" - max"),iBeamSt+1,iBeamLo,(iBeamHi+1));
   hCrossTot = new TH1F(sProcName+"Tot",(sProcName+" - tot"),iBeamSt+1,iBeamLo,(iBeamHi+1));
+  */
+  hCrossSec = new TH3F("hCrossSec",sProcName,iBeamSt+1,iBeamLo,(iBeamHi+1),181,0,181,181,0,181);
+  hCrossMax = new TH1F("hCrossMax",(sProcName+" - max"),iBeamSt+1,iBeamLo,(iBeamHi+1));
+  hCrossTot = new TH1F("hCrossTot",(sProcName+" - tot"),iBeamSt+1,iBeamLo,(iBeamHi+1));
   
   // Initialize output tree
 
@@ -313,7 +317,7 @@ void BaseGen::CrossGen(){
 	}
       }
     }
-    
+
     hCrossMax->Fill(fEnr[iEnrN], fCMax);
     hCrossTot->Fill(fEnr[iEnrN], fCTot);
 
@@ -502,11 +506,12 @@ Bool_t BaseGen::Reject(Float_t fBeamE, Float_t fAng, Float_t fPhi){
   Bool_t bCheck = kFALSE;
 
   Float_t fCVal = hCrossSec->Interpolate(fBeamE, fAng, fPhi);
-  Float_t fCMax = hCrossMax->Interpolate(fBeamE);
+  //Float_t fCMax = hCrossMax->Interpolate(fBeamE);
+  Float_t fCMax = hCrossMax->GetMaximum();
 
   // If the cross section for a given energy and angle is less than, or equal
-  // to, the maximum cross section at that energy times a random number between
-  // 0 and 1, then we reject that event.
+  // to, the maximum cross section (at that energy) at all energies times a 
+  // random number between 0 and 1, then we reject that event.
 
   if(fCVal <= (fCMax*gRandom->Rndm())) bCheck = kTRUE;
 
