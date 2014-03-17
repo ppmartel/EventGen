@@ -22,7 +22,7 @@ LDFLAGS      += $(ROOTLDFLAGS)
 LIBS          = $(ROOTLIBS) $(SYSLIBS)
 GLIBS         = $(ROOTGLIBS) $(SYSLIBS)
 
-DEPS = physics.h functions.h 
+DEPS = physics.h BaseGen.h BasePart.h ComptonGen.h Pi0PhotGen.h
 
 .SUFFIXES: .$(SrcSuf)
 
