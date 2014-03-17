@@ -1,17 +1,19 @@
-// Compton Scattering and Pi0 Photoproduction Event Generator
+// Compton Scattering and Pi0P/PiPN Photoproduction Event Generator
 // Designed for use with the MAMI A2 Geant4 Simulation
 //
 // Base class for event generators
 //
 // Author - P. Martel
-// Version - 21 June 2011
+// Version - 23 October 2012
 
 class BaseGen {
  protected:
   TString sProcName;
   TString sTargName;
+  TString sBaseName;
   Bool_t bIncoh;
   Bool_t bCoher;
+  Bool_t bIsotW;
   Int_t iBeamLo;
   Int_t iBeamHi;
   Int_t iBeamSt;
@@ -19,6 +21,12 @@ class BaseGen {
   Int_t iNEnr;
   Int_t iNAng;
   Int_t iNPhi;
+  Float_t fBeamT;
+  Float_t fBeamL;
+  Float_t fBeamP;
+  Float_t fTargT;
+  Float_t fTargL;
+  Float_t fTargP;
   Float_t *fEnr;
   Float_t ***fPar;
   TH3F *hCrossSec;
@@ -28,28 +36,33 @@ class BaseGen {
   TVector3 cm_to_lab, lab_to_cm;
   Float_t vtx_x, vtx_y, vtx_z;
  public:
-  BaseGen(TString, TString, Int_t, Int_t);
+  BaseGen(TString, TString, TString, Int_t, Int_t);
   ~BaseGen();
-  void InitBase(const char*, const Int_t);
-  void CrossUnp();
+  void SetPol(Float_t, Float_t, Float_t, Float_t, Float_t, Float_t);
+  void InitBase(const char*);
+  void CrossGen();
+  Float_t GetCross(Int_t, Int_t, Int_t);
   void Collision2B(BasePart&, BasePart&, BasePart&, BasePart&);
   void Decay2B(BasePart&, BasePart&, BasePart&);
   void SpecModel(BasePart&);
   void InitNtuple(Int_t, Int_t*);
   void SaveNtuple(TString);
+  void SaveTree(TString);
   void NewVertex();
   Float_t Sqr(Float_t x){return(x*x);};
-  Bool_t Weight(Float_t, Float_t, Float_t);
+  Bool_t Reject(Float_t, Float_t, Float_t);
   TNtuple *h1;
+  TTree *t1;
   Float_t var[100];
 };
 
-BaseGen::BaseGen(TString name, TString target, Int_t beamlo, Int_t beamhi){
+BaseGen::BaseGen(TString name, TString target, TString base, Int_t beamlo, Int_t beamhi){
 
   // Set reaction information
 
   sProcName = name;
   sTargName = target;
+  sBaseName = base;
 
   if(sProcName.Contains("Incoherent")) bIncoh = kTRUE;
   else bIncoh = kFALSE;
@@ -57,11 +70,23 @@ BaseGen::BaseGen(TString name, TString target, Int_t beamlo, Int_t beamhi){
   if(sProcName.Contains("Coherent")) bCoher = kTRUE;
   else bCoher = kFALSE;
 
+  if(sProcName.Contains("Isot")) bIsotW = kTRUE;
+  else bIsotW = kFALSE;
+
   iBeamLo = beamlo;
   iBeamHi= beamhi;
   iBeamSt = (beamhi-beamlo);
 
-  cout << ("Constructing base generator for "+sProcName) << endl;
+  // Begin with an unpolarized state
+
+  fBeamT = 0;
+  fBeamL = 0;
+  fBeamP = 0;
+  fTargT = 0;
+  fTargL = 0;
+  fTargP = 0;
+
+  cout << "Constructing base generator" << endl;
 
   // Initialize cross section histograms, bin sizes will be adjusted later
 
@@ -69,11 +94,15 @@ BaseGen::BaseGen(TString name, TString target, Int_t beamlo, Int_t beamhi){
   hCrossMax = new TH1F(sProcName+"Max",(sProcName+" - max"),iBeamSt+1,iBeamLo,(iBeamHi+1));
   hCrossTot = new TH1F(sProcName+"Tot",(sProcName+" - tot"),iBeamSt+1,iBeamLo,(iBeamHi+1));
   
+  // Initialize output tree
+
+  t1 = new TTree("OutTree","Generator kinematics tree");
+
 };
 
 BaseGen::~BaseGen(){
 
-  cout << ("Deleting base generator for "+sProcName) << endl;
+  cout << "Deleting base generator" << endl << endl;
 
   delete fEnr;
   delete fPar;
@@ -83,10 +112,25 @@ BaseGen::~BaseGen(){
 
 };
 
-void BaseGen::InitBase(const char* cComFile, const Int_t iNParC){
+void BaseGen::SetPol(Float_t fBTin, Float_t fBLin, Float_t fBPin, Float_t fTTin, Float_t fTLin, Float_t fTPin){
+
+  // Set polarization values
+
+  fBeamT = fBTin;
+  fBeamL = fBLin;
+  fBeamP = fBPin;
+  fTargT = fTTin;
+  fTargL = fTLin;
+  fTargP = fTPin;
+
+};
+
+void BaseGen::InitBase(const char* cComFile){
 
   // Initialization for Normal and Incoherent reactions, reads in data files
   // from the 'par' directory to construct cross section tables
+
+  const Int_t iNParC = 9;
 
   Int_t iBeamE = 0, iParN = 0, iEnrN = 0, iAngN = 0, iNPar = iNParC;
 
@@ -134,7 +178,7 @@ void BaseGen::InitBase(const char* cComFile, const Int_t iNParC){
 
   iNEnr = iEnrN;
   iNAng = iAngN;
-  iNPhi = iAngN;
+  iNPhi = ((2*iAngN)-1);
 
   const Int_t iNEnrC = iEnrN;
   const Int_t iNAngC = iAngN;
@@ -213,7 +257,7 @@ void BaseGen::InitBase(const char* cComFile, const Int_t iNParC){
 
   // Reset bin settings for the cross section histograms
 
-  hCrossSec->SetBins(iNEnr,iBeamLo-0.5*iBeamSt,iBeamHi+0.5*iBeamSt,iNAng,-0.5*iAngSt,180+0.5*iAngSt,iNAng,-0.5*iAngSt,180+0.5*iAngSt);
+  hCrossSec->SetBins(iNEnr,iBeamLo-0.5*iBeamSt,iBeamHi+0.5*iBeamSt,iNAng,0-0.5*iAngSt,180+0.5*iAngSt,iNPhi,-180-0.5*iAngSt,180+0.5*iAngSt);
   hCrossMax->SetBins(iNEnr,iBeamLo-0.5*iBeamSt,iBeamHi+0.5*iBeamSt);
   hCrossTot->SetBins(iNEnr,iBeamLo-0.5*iBeamSt,iBeamHi+0.5*iBeamSt);
   
@@ -225,12 +269,13 @@ void BaseGen::InitBase(const char* cComFile, const Int_t iNParC){
 
 };
 
-void BaseGen::CrossUnp(){
+void BaseGen::CrossGen(){
 
-  Int_t iEnrN, iAngN, iPhiN;
+  Int_t iEnrN = 0, iAngN = 0, iPhiN = 0;
+  Float_t fPhi, fAngL, fAngH;
 
   Float_t fSolAng = 0, fSolAngTot = 0, fCVal = 0, fCMax = 0, fCTot = 0;
-  Float_t fCVlo, fCVhi, fCVav;
+  Float_t fCVll, fCVlu, fCVul, fCVuu, fCVav;
 
   // Construct cross sections and fill the corresponding histogram
 
@@ -239,36 +284,73 @@ void BaseGen::CrossUnp(){
     fCMax = 0;
     fCTot = 0;
     for(iAngN=0; iAngN<iNAng; iAngN++){
-      if(iAngN < (iNAng-1)) fSolAng = ((cos(fPar[0][iEnrN][iAngN]*kD2R)-cos(fPar[0][iEnrN][iAngN+1]*kD2R))*kD2R);
-      fCVal = fPar[1][iEnrN][iAngN];
-	
-      // Check for maximum cross section value
-      if(fCVal > fCMax) fCMax = fCVal;
+      fAngL = fPar[0][iEnrN][iAngN];
+      fAngH = fPar[0][iEnrN][iAngN+1];
 
-      // Compute average cross section over angular bin
-      if(iAngN < (iNAng-1)){
-	fCVlo = fPar[1][iEnrN][iAngN];
-	fCVhi = fPar[1][iEnrN][iAngN+1];
-	fCVav = ((fCVlo+fCVhi)/2.);
-
-	// Sum up total cross section and solid angle (which should be 4pi)
-	fCTot += (2*fCVav*(iNPhi-1)*iAngSt*fSolAng);
-	fSolAngTot += (2*(iNPhi-1)*iAngSt*fSolAng);
-      }
+      if(iAngN < (iNAng-1)) fSolAng = (cos(fAngL*kD2R)-cos(fAngH*kD2R));
 
       for(iPhiN=0; iPhiN<iNPhi; iPhiN++){
-	hCrossSec->Fill(fEnr[iEnrN], fPar[0][iEnrN][iAngN], (iPhiN*iAngSt), fCVal);
+	fPhi = (-180+(iPhiN*iAngSt));
+
+	fCVal = GetCross(iEnrN, iAngN, iPhiN);
+
+	hCrossSec->Fill(fEnr[iEnrN], fAngL, fPhi, fCVal);
+	
+	// Check for maximum cross section value
+	if(fCVal > fCMax) fCMax = fCVal;
+
+	// Compute average cross section over angular bin
+	if((iAngN < (iNAng-1)) && (iPhiN < (iNPhi-1))){
+	  fCVll = GetCross(iEnrN, iAngN, iPhiN);
+	  fCVlu = GetCross(iEnrN, iAngN, iPhiN+1);
+	  fCVul = GetCross(iEnrN, iAngN+1, iPhiN);
+	  fCVuu = GetCross(iEnrN, iAngN+1, iPhiN+1);
+	  fCVav = ((fCVll+fCVlu+fCVul+fCVuu)/4.);	  
+
+	  // Sum up total cross section and solid angle (which should be 4pi)
+	  fCTot += (fCVal*iAngSt*kD2R*fSolAng);
+	  fSolAngTot += (iAngSt*kD2R*fSolAng);
+	}
       }
     }
     
     hCrossMax->Fill(fEnr[iEnrN], fCMax);
     hCrossTot->Fill(fEnr[iEnrN], fCTot);
-    
+
     cout << fEnr[iEnrN] << "  \t\t" << fCMax << "   \t" << fCTot;
     if(!(TMath::AreEqualRel(fSolAngTot,(4*TMath::Pi()),0.0001))) cout << "\t\tError - Sol Ang = " << fSolAngTot << " sr";
     cout << endl;
-
+    
   }
+
+};
+
+Float_t BaseGen::GetCross(Int_t iEnrN, Int_t iAngN, Int_t iPhiN){
+
+  // Determine cross section from read-in parameters
+  
+  Float_t fCVal = 0;
+  Float_t fPhi = (-180+(iPhiN*iAngSt));
+  
+  Float_t fParU = fPar[1][iEnrN][iAngN];
+  Float_t fParS = fPar[2][iEnrN][iAngN];
+  Float_t fParT = fPar[3][iEnrN][iAngN];
+  Float_t fParP = fPar[4][iEnrN][iAngN];
+  Float_t fParG = fPar[5][iEnrN][iAngN];
+  Float_t fParH = fPar[6][iEnrN][iAngN];
+  Float_t fParE = fPar[7][iEnrN][iAngN];
+  Float_t fParF = fPar[8][iEnrN][iAngN];
+
+  fCVal = fParU*(1-(fBeamT*fParS*cos(2*(fBeamP-fPhi)*kD2R)));
+  
+  fCVal += fParU*(((fBeamL*fParF)-(fBeamT*fParH*sin(2*(fBeamP-fPhi)*kD2R)))*
+		  fTargT*cos((fTargP-fPhi)*kD2R));
+  fCVal += fParU*((fParT-(fBeamT*fParP*cos(2*(fBeamP-fPhi)*kD2R)))*
+		  fTargT*sin((fTargP-fPhi)*kD2R));
+  fCVal += fParU*(((-fBeamL*fParE)+(fBeamT*fParG*sin(2*(fBeamP-fPhi)*kD2R)))*
+		  fTargL);
+  
+  return fCVal;
 
 };
 
@@ -292,7 +374,7 @@ void BaseGen::Collision2B(BasePart& qi,BasePart& ki,BasePart& qf,BasePart& kf){
   // Determine energy and momentum of 'scattered' particle
   
   ener = ((ptot.M2()+Sqr(qf.Mass)-Sqr(kf.Mass))/(2*ptot.M()));
-  mom = sqrt(Sqr(ener)-Sqr(qf.Mass));
+  mom = TMath::Sqrt(Sqr(ener)-Sqr(qf.Mass));
 
   // If the energy of the 'scattered' particle has NOT been previously set
   // (therefore still zero) set its energy and momentum (magnitude) but
@@ -317,7 +399,8 @@ void BaseGen::Collision2B(BasePart& qi,BasePart& ki,BasePart& qf,BasePart& kf){
 
   ener = (qi.EnerCM + ki.EnerCM - qf.EnerCM);
 
-  kf.SetP4CM(ener,mom,(180-qf.ThetaCM),-(180-qf.PhiCM));
+  kf.SetP4CM(ener,mom,(180-qf.ThetaCM),qf.PhiCM);
+  kf.RotateCM(180);
   kf.BoostLab(cm_to_lab);
   
 };
@@ -334,21 +417,22 @@ void BaseGen::Decay2B(BasePart& k,BasePart& p1,BasePart& p2){
   cm_to_lab = ptot.BoostVector();
   lab_to_cm = -ptot.BoostVector();
 
-  // Boost initial particle to CM frame
-  
-  k.BoostCM(lab_to_cm);
+  // Boost initial particle to its CM frame
+
+  // k.BoostCM(lab_to_cm); // Unnecessary, and bad for original CM frame info  
   
   // Determine energy and momentum of first decay particle
 
   ener = ((ptot.M2()+Sqr(p1.Mass)-Sqr(p2.Mass))/(2*ptot.M()));
-  mom = sqrt(Sqr(ener)-Sqr(p1.Mass));
+  mom = TMath::Sqrt(Sqr(ener)-Sqr(p1.Mass));
 
   p1.SetP4CM(ener,mom);
   p1.BoostLab(cm_to_lab);
 
   // Set second decay particle back-to-back with first decay particle in CM
 
-  p2.SetP4CM(ener,mom,(180-p1.ThetaCM),-(180-p1.PhiCM));
+  p2.SetP4CM(ener,mom,(180-p1.ThetaCM),p1.PhiCM);
+  p2.RotateCM(180);
   p2.BoostLab(cm_to_lab);
 
 };
@@ -398,7 +482,7 @@ void BaseGen::SpecModel(BasePart& ki){
   while(prob>func){
     kpi = k_max*gRandom->Rndm();
     prob = sf_max[L]*gRandom->Rndm();
-    func = A[L]*pow((kpi/1000.0),(coeff[L]+2))*exp(-Sqr(kpi/sigma[L])/2);
+    func = A[L]*(TMath::Power((kpi/1000.0),(coeff[L]+2)))*(TMath::Exp(-Sqr(kpi/sigma[L])/2));
   }
 
   ener = (kMP_MEV-(Emin[L]+(Emax[L]-Emin[L])*gRandom->Rndm()));
@@ -409,18 +493,20 @@ void BaseGen::SpecModel(BasePart& ki){
 
 };
 
-Bool_t BaseGen::Weight(Float_t fBeamE, Float_t fAng, Float_t fPhi){
+Bool_t BaseGen::Reject(Float_t fBeamE, Float_t fAng, Float_t fPhi){
 
-  // Weighting calculation for event selection
+  if(bIsotW) return kFALSE;
+
+  // Weighting calculation for event rejection
   
   Bool_t bCheck = kFALSE;
 
-  Float_t fCVal = hCrossSec->Interpolate(fBeamE, fAng, TMath::Abs(fPhi));
+  Float_t fCVal = hCrossSec->Interpolate(fBeamE, fAng, fPhi);
   Float_t fCMax = hCrossMax->Interpolate(fBeamE);
 
   // If the cross section for a given energy and angle is less than, or equal
   // to, the maximum cross section at that energy times a random number between
-  // 0 and 1, then we accept that event.
+  // 0 and 1, then we reject that event.
 
   if(fCVal <= (fCMax*gRandom->Rndm())) bCheck = kTRUE;
 
@@ -467,6 +553,18 @@ void BaseGen::SaveNtuple(TString sFile){
   
 };
 
+void BaseGen::SaveTree(TString sFile){
+
+  // Write tree to file, obviously
+
+  TFile f1(sFile, "RECREATE", "MC_Tree_File");
+
+  t1->Write();
+
+  f1.Close();
+  
+};
+
 void BaseGen::NewVertex() {
 
   // Choose a new random vertex for this event, given the dimensions of the
@@ -475,7 +573,7 @@ void BaseGen::NewVertex() {
   vtx_x = 0.5;
   vtx_y = 0.5;
 
-  while(sqrt(Sqr(vtx_x)+Sqr(vtx_y)) > 0.5){
+  while((TMath::Sqrt(Sqr(vtx_x)+Sqr(vtx_y))) > 0.5){
     vtx_x = gRandom->Gaus(0,0.5);
     vtx_y = gRandom->Gaus(0,0.5);
   }

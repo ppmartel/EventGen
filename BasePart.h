@@ -4,7 +4,7 @@
 // Base particle class for use in the event generator
 //
 // Author - P. Martel
-// Version - 21 June 2011
+// Version - 23 June 2011
 
 class BasePart {
  protected:
@@ -27,6 +27,9 @@ class BasePart {
   void SetP4Lab(Float_t, Float_t, Float_t, Float_t);
   void SetP4CM(Float_t, Float_t);
   void SetP4Lab(Float_t, Float_t);
+  void RotateCM(Float_t);
+  void RotateLab(Float_t);
+  void RotatePhi(Float_t);
   TString WhichDet();
   void WriteHists();
   void FillNtuple(Float_t*, Int_t);
@@ -149,8 +152,8 @@ void BasePart::Reset(){
 
   // Reset CM and lab Lorentz vectors and variables
 
-  P4.SetPxPyPzE(0,0,0,0);
   P4CM.SetPxPyPzE(0,0,0,0);
+  P4.SetPxPyPzE(0,0,0,0);
   FillCM();
   FillLab();
 
@@ -160,15 +163,11 @@ void BasePart::SetP4CM(Float_t ener,Float_t mom,Float_t theta,Float_t phi){
 
   // Set the CM Lorentz Vector with the supplied values
 
-  EnerCM = ener;
-  KEnerCM = (Ener-Mass);
-  MomCM = mom;
-  ThetaCM = theta;
-  PhiCM = phi;
-  P4CM.SetPxPyPzE(1,1,1,EnerCM);
-  P4CM.SetRho(MomCM);
-  P4CM.SetTheta(ThetaCM*kD2R);
-  P4CM.SetPhi(PhiCM*kD2R);
+  P4CM.SetPxPyPzE(1,1,1,ener);
+  P4CM.SetRho(mom);
+  P4CM.SetTheta(theta*kD2R);
+  P4CM.SetPhi(phi*kD2R);
+  FillCM();
 
 };
 
@@ -176,15 +175,11 @@ void BasePart::SetP4Lab(Float_t ener,Float_t mom,Float_t theta,Float_t phi){
 
   // Set the lab Lorentz Vector with the supplied values
 
-  Ener = ener;
-  KEner = (Ener-Mass);
-  Mom = mom;
-  Theta = theta;
-  Phi = phi;
-  P4.SetPxPyPzE(1,1,1,Ener);
-  P4.SetRho(Mom);
-  P4.SetTheta(Theta*kD2R);
-  P4.SetPhi(Phi*kD2R);
+  P4.SetPxPyPzE(1,1,1,ener);
+  P4.SetRho(mom);
+  P4.SetTheta(theta*kD2R);
+  P4.SetPhi(phi*kD2R);
+  FillLab();
 
 };
 
@@ -207,6 +202,33 @@ void BasePart::SetP4Lab(Float_t ener, Float_t mom){
   Float_t theta = acos(-1+2*gRandom->Rndm());
   Float_t phi = kPI*(-1+2*gRandom->Rndm());
   SetP4Lab(ener, mom, (theta*kR2D), (phi*kR2D));
+
+};
+
+void BasePart::RotateCM(Float_t phi){
+
+  // Rotate CM frame about z-axis by phi
+
+  P4CM.RotateZ(kD2R*phi);
+  FillCM();
+
+};
+
+void BasePart::RotateLab(Float_t phi){
+
+  // Rotate lab frame about z-axis by phi
+
+  P4.RotateZ(kD2R*phi);
+  FillLab();
+
+};
+
+void BasePart::RotatePhi(Float_t phi){
+
+  // Rotate both frames about z-axis by phi
+
+  RotateCM(phi);
+  RotateLab(phi);
 
 };
 

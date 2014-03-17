@@ -1,0 +1,24 @@
+Original: 21 June 2011
+
+Update: 23 October 2012
+   Adjustments:
+	Changed 'pow' to 'TMath::Power'
+	Changed 'exp' to 'TMath::Exp'
+	Changed 'sqrt' to 'TMath::Sqrt'
+	Changed some names (ComptonGen to CompGen, Pi0PhotGen to Pi0PGen)
+	Differentiated target and recoil selection (in order to include PiPN)
+	Pass base parameter filename to simplify parameter loading
+	Changed 'Weight' subroutine in BaseGen.h to 'Reject' for clarification
+	In BaseGen.h, edited method for setting reaction products back-to-back, by doing a rotation around z
+
+   Corrections:
+	In BaseGen.h Decay2B subroutine, removed boosting decaying particle into its CM frame. Boosting it was removing the information for the experimental CM frame (though not affecting the generator calculations or output)
+	In BasePart.h SetP4CM subroutine, KEnerCM was improperly set to Ener-Mass, fixed to EnerCM-Mass (though also not affecting the generator calculations or output)
+	Previously the phi distributions were symmetric about the polarization axis (which is not true for pion photoproduction). This was fixed.
+
+   Additions:
+	Added PiPNGen
+	Included a tree output with lorentz vectors
+	Added the ability to adjust phi orientation of the polarization
+	Included linear beam and longitudinal target polarizations, with the various interplays between them (although the parameters for linear beam and polarized target combinations are not included for Compton yet)
+	Using the same parameter notation for Compton as for pion photoproduction, the generation of both polarized and unpolarized cross sections was merged into one subroutine in BaseGen.h (incoherent must still be done separately)
