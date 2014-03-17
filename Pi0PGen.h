@@ -94,7 +94,7 @@ void Pi0PGen::Init(){
 
   // Initialization for Pi0P Photoproduction process
 
-  if(bCoher) InitCoher();
+  if(bCoher && !bIsotW) InitCoher();
 
   else if(bIsotW){
     cout << endl;

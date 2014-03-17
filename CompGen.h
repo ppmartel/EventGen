@@ -70,7 +70,7 @@ void CompGen::Init(){
 
   // Initialization for Compton Scattering process
 
-  if(bCoher) InitCoher();
+  if(bCoher && !bIsotW) InitCoher();
 
   else if(bIsotW){
     cout << endl;

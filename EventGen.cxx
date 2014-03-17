@@ -59,8 +59,6 @@ int main()
 
   TStopwatch swTimer;
 
-  Int_t i=0, j=0;
-
   // Parameter Files
   
   gSystem->cd("par");
@@ -99,7 +97,10 @@ int main()
   Int_t iProcS, iTypeS, iWghtS, iTargS, iRecoS;
   Int_t iBPolS, iTPolS;
   Int_t iTimeS;
-  Int_t iNEvn = 1e6;
+
+  Int_t iNEvn = 1000000;
+  Int_t iEvnN = 0;
+  Int_t iEvnR = 0;
 
   // Choose reaction process
 
@@ -128,11 +129,6 @@ int main()
     return 0;
   }
   iTypeS--;
-
-  if(iProcS==2 && iTypeS==2){
-    cout << "Coherent process not allowed for PiPN" << endl;
-    return 0;
-  }
 
   if(iTypeS!=2){
     cout << "Choose weighting:" << endl;
@@ -176,6 +172,29 @@ int main()
     }
   }
 
+  else if(iTypeS==2){
+    cout << "Choose weighting:" << endl;
+    cout << "1) Isot" << endl;
+    cout << "2) Parameterization" << endl;
+    cin >> iWghtS;
+    cout << "--------------------------------------------------" << endl;
+    
+
+    if(iProcS==2 && iWghtS==2){
+      cout << "Coherent parameterization not provided for PiPN" << endl;
+      return 0;
+    }
+
+    if(iWghtS<1 || iWghtS>2){
+      cout << "Invalid weighting" << endl;
+    return 0;
+    }
+    iWghtS--;
+
+    if(iWghtS == 0) sWght = "Isot";
+    else sWght = "parameterized";
+  }
+
   // Choose target
 
   // Normal
@@ -215,8 +234,7 @@ int main()
 
   // Set description of generator
 
-  TString sName = (sType[iTypeS]+" "+sProc[iProcS]+" on "+sTarg[iTargS]);
-  if(iTypeS!=2) sName += (" using "+sWght+" weighting");
+  TString sName = (sType[iTypeS]+" "+sProc[iProcS]+" on "+sTarg[iTargS]+" using "+sWght+" weighting");
 
   // Set the beam and target polarizations for normal reactions if desired
   // For incoherent or coherent reactions, set target polarization to zero
@@ -353,8 +371,8 @@ int main()
     }
   }
   else{
-    iBeamLo = TMath::Floor(fBeamLo);
-    iBeamHi = TMath::Ceil(fBeamHi);
+    iBeamLo = TMath::FloorNint(fBeamLo);
+    iBeamHi = TMath::CeilNint(fBeamHi);
   }
 
   delete sdDir;
@@ -364,7 +382,8 @@ int main()
 
   // Make Bremsstrahlung distribution for event selection
 
-  TF1 *fBeam = new TF1("fBeam", "1/x", fBeamLo, fBeamHi);
+  //TF1 *fBeam = new TF1("fBeam", "1/x", fBeamLo, fBeamHi);
+  TF1 *fBeam = new TF1("fBeam", "1", fBeamLo, fBeamHi);
   Bool_t bBeam = kTRUE;
   Double_t dBeam = iBeamLo;
   Bool_t bTime = kTRUE;
@@ -536,26 +555,26 @@ int main()
 
     swTimer.Start();
     if(bTime){
-      while(i<iNEvn && dTagC<dTagM){
+      while(iEvnN<iNEvn && dTagC<dTagM){
 	dBeam = fBeam->GetRandom();
 	if(dBeam>=fEnrL && dBeam<fEnrH) dTagC += dTagS;
-	if(pgen->NewEvent(dBeam)) i++;
-	else j++;
+	if(pgen->NewEvent(dBeam)) iEvnN++;
+	else iEvnR++;
       }
     }
     else{
-      while(i<iNEvn){
+      while(iEvnN<iNEvn){
 	if(bBeam) dBeam = fBeam->GetRandom();
-	if(pgen->NewEvent(dBeam)) i++;
-	else j++;
+	if(pgen->NewEvent(dBeam)) iEvnN++;
+	else iEvnR++;
       }
     }
     swTimer.Stop();
 
     // Read out results
   
-    cout << i << " events accepted" << endl;
-    cout << j << " events rejected" << endl;
+    cout << iEvnN << " events accepted" << endl;
+    cout << iEvnR << " events rejected" << endl;
     if(bTime){
       cout << dTagC << " events tagged (max of " << dTagM << ")" << endl;
       cout << "Equates to " << dTime*dTagC/dTagM << " min run time" << endl;
@@ -589,26 +608,26 @@ int main()
 
     swTimer.Start();
     if(bTime){
-      while(i<iNEvn && dTagC<dTagM){
+      while(iEvnN<iNEvn && dTagC<dTagM){
 	dBeam = fBeam->GetRandom();
 	if(dBeam>=fEnrL && dBeam<fEnrH) dTagC += dTagS;
-	if(pgen->NewEvent(dBeam)) i++;
-	else j++;
+	if(pgen->NewEvent(dBeam)) iEvnN++;
+	else iEvnR++;
       }
     }
     else{
-      while(i<iNEvn){
+      while(iEvnN<iNEvn){
 	if(bBeam) dBeam = fBeam->GetRandom();
-	if(pgen->NewEvent(dBeam)) i++;
-	else j++;
+	if(pgen->NewEvent(dBeam)) iEvnN++;
+	else iEvnR++;
       }
     }
     swTimer.Stop();
 
     // Read out results
   
-    cout << i << " events accepted" << endl;
-    cout << j << " events rejected" << endl;
+    cout << iEvnN << " events accepted" << endl;
+    cout << iEvnR << " events rejected" << endl;
     if(bTime){
       cout << dTagC << " events tagged (max of " << dTagM << ")" << endl;
       cout << "Equates to " << dTime*dTagC/dTagM << " min run time" << endl;
@@ -642,26 +661,26 @@ int main()
 
     swTimer.Start();
     if(bTime){
-      while(i<iNEvn && dTagC<dTagM){
+      while(iEvnN<iNEvn && dTagC<dTagM){
 	dBeam = fBeam->GetRandom();
 	if(dBeam>=fEnrL && dBeam<fEnrH) dTagC += dTagS;
-	if(pgen->NewEvent(dBeam)) i++;
-	else j++;
+	if(pgen->NewEvent(dBeam)) iEvnN++;
+	else iEvnR++;
       }
     }
     else{
-      while(i<iNEvn){
+      while(iEvnN<iNEvn){
 	if(bBeam) dBeam = fBeam->GetRandom();
-	if(pgen->NewEvent(dBeam)) i++;
-	else j++;
+	if(pgen->NewEvent(dBeam)) iEvnN++;
+	else iEvnR++;
       }
     }
     swTimer.Stop();
 
     // Read out results
   
-    cout << i << " events accepted" << endl;
-    cout << j << " events rejected" << endl;
+    cout << iEvnN << " events accepted" << endl;
+    cout << iEvnR << " events rejected" << endl;
     if(bTime){
       cout << dTagC << " events tagged (max of " << dTagM << ")" << endl;
       cout << "Equates to " << dTime*dTagC/dTagM << " min run time" << endl;
