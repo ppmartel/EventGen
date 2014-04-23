@@ -94,6 +94,7 @@ int main()
   Int_t iProcN, iTypeN, iWghtN;
   Int_t iProcS, iTypeS, iWghtS, iTargS, iRecoS;
   Int_t iBPolS, iTPolS;
+  Int_t iBeamS;
   Int_t iTimeS;
 
   Int_t iNEvn = 1000000;
@@ -378,15 +379,11 @@ int main()
 
   gSystem->cd("..");
 
-  // Make Bremsstrahlung distribution for event selection
-
-  //TF1 *fBeam = new TF1("fBeam", "1/x", fBeamLo, fBeamHi);
-  TF1 *fBeam = new TF1("fBeam", "1", fBeamLo, fBeamHi);
   Bool_t bBeam = kTRUE;
   Double_t dBeam = iBeamLo;
   Bool_t bTime = kTRUE;
 
-  // If selecting one energy value, turn off Brem distribution and create
+  // If selecting one energy value, turn off beam distribution and create
   // cross section table just below and just above this value
 
   if(fBeamLo == fBeamHi){
@@ -399,6 +396,37 @@ int main()
   }
 
   if(iWghtS == 0) bTime = kFALSE;
+
+  // Determine beam distribution for event selection
+  
+  TString sBeam;
+  if(bBeam){
+    
+    cout << "Choose beam distribution:" << endl;
+    cout << "1) Flat" << endl;
+    cout << "2) Brem" << endl;
+    cout << "3) Other" << endl;
+    
+    cin >> iBeamS;
+    
+    if(iBeamS == 1) sBeam = "1";
+    else if(iBeamS == 2) sBeam = "1/x";
+    else if(iBeamS == 3){
+      cout << "Give beam distribution depending on 'x'" << endl;
+      cout << "(i.e. '1/x') = ";
+      cin >> sBeam;
+    }
+    else{
+      cout << "Invalid beam distribution" << endl;
+      return 0;
+    }
+    cout << "--------------------------------------------------" << endl;
+  }
+  else sBeam = "1";
+
+  TF1 *fBeam = new TF1("fBeam", sBeam, fBeamLo, fBeamHi);
+
+  // Variables for time selection
 
   Float_t fEnrE = 450.0;
   Float_t fEnrP = 160.0;
