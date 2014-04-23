@@ -2,7 +2,6 @@
 // Designed for use with the MAMI A2 Geant4 Simulation
 //
 // Author - P. Martel
-// Version - 18 January 2013
 
 #ifndef __CINT__
 
@@ -49,7 +48,6 @@ int main()
   cout << "Compton Scattering and Pi0P/PiPN Photoproduction Event Generator" << endl;
   cout << "Designed for use with the MAMI A2 Geant4 Simulation" << endl << endl;
   cout << "Author - P. Martel" << endl;
-  cout << "Version - 18 January 2013" << endl;
   cout << "--------------------------------------------------" << endl;
 
   // Set seed for random generator, otherwise the program will produce the
@@ -532,6 +530,7 @@ int main()
   cout << sName << endl << endl;
   cout << "--------------------------------------------------" << endl << endl;
 
+  gSystem->MakeDirectory("out");
   TString sFile1 = "out/hist.root";
   TString sFile2 = "out/ntpl.root";
   TString sFile3 = "out/tree.root";

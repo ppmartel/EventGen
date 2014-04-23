@@ -4,7 +4,6 @@
 // Base class for event generators
 //
 // Author - P. Martel
-// Version - 18 January 2013
 
 class BaseGen {
  protected:

@@ -4,7 +4,6 @@
 // PiPN photoproduction event generator class
 //
 // Author - P. Martel
-// Version - 18 January 2013
 
 class PiPNGen : public BaseGen {
  protected:
