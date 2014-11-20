@@ -221,6 +221,12 @@ void Pi0PGen::InitCoher(){
 };
 
 Bool_t Pi0PGen::NewEvent(Float_t fBeamE){
+  
+  // Make sure the beam energy is above threshold
+
+  if(fBeamE < (((TMath::Power((pPi0.Mass+pRecoil.Mass),2.0))-(TMath::Power((pPhoton.Mass+pTarget.Mass),2.0)))/(2*pTarget.Mass))){
+    return kFALSE;
+  }
 
   Bool_t bCheck = kTRUE;
 
