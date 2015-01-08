@@ -1,0 +1,21 @@
+#!/bin/bash
+
+for i in `seq -w 01 50`
+do
+
+./EventGen > out/out.dat <<EOF
+3
+1
+1
+270.00
+350.00
+200000
+    
+EOF
+
+mv out/out.dat ~/work0/MC/g-p_pip-n/EventGen_g-p_pip-n_isot_${i}.dat
+#mv out/hist.root ~/work0/MC/g-p_pip-n/EventGen_g-p_pip-n_isot_${i}.hist.root
+mv out/ntpl.root ~/work0/MC/g-p_pip-n/EventGen_g-p_pip-n_isot_${i}.root
+#mv out/tree.root ~/work0/MC/g-p_pip-n/EventGen_g-p_pip-n_isot_${i}.tree.root
+
+done
