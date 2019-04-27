@@ -217,7 +217,8 @@ Bool_t CompGen::NewEvent(Float_t fBeamE){
   // through a spectral model
   
   if(bIncoh){
-    SpecModel(pTarget);
+    //SpecModel(pTarget);
+    FermiModel(pTarget);
     Collision2B(pPhoton, pTarget, pScatter, pRecoil);    
   }
 

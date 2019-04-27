@@ -5,6 +5,56 @@
 //
 // Author - P. Martel
 
+Double_t Fermi3He(Double_t *x, Double_t *par){
+
+  // Fermi momentum distribution for 3He from Pluto
+
+  const double pi = 3.1415927;
+  const double a  = 7.09078;
+  const double b  = 5.38753;
+  const double c  = 9.90202;
+  const double d  = 0.779408;
+
+  Double_t par0 = (4./TMath::Sqrt(pi))*TMath::Power(a,3./2.);
+  Double_t par1 = x[0]*x[0]*25./(1.E6);
+  Double_t mom = d*par0*par1*(TMath::Exp(-par1*a) + c*TMath::Exp(-TMath::Sqrt(par1)*b));
+
+  return mom;
+
+};
+
+Double_t Fermi4He(Double_t *x, Double_t *par){
+
+  // Fermi momentum distribution for 4He from Pluto
+
+  const double hbar  = 0.197463569747999998;
+  const double a = 0.7352;
+  const double b = 0.05511;
+
+  Double_t par0 = TMath::Exp(-x[0]*x[0]/(1.E6*hbar*hbar*a));
+  Double_t mom = x[0]*x[0]/(1.E6*hbar*hbar*b)*par0;
+
+  return mom;
+
+};
+
+Double_t Fermi12C(Double_t *x, Double_t *par){
+
+  // Fermi momentum distribution for 12C from Pluto
+
+  const double pi    = 3.1415927;
+  const double a = 1/0.416;
+  const double b = 1/0.23;
+  const double c = 0.04;
+
+  Double_t par0 = (4./TMath::Sqrt(pi))*TMath::Power(a,3./2.);
+  Double_t par1 = x[0]*x[0]*25./(1.E6);
+  Double_t mom  = par0*par1*(TMath::Exp(-par1*a) + c*TMath::Exp(-TMath::Sqrt(par1)*b));
+
+  return mom;
+
+};
+
 class BaseGen {
  protected:
   TString sProcName;
@@ -34,6 +84,7 @@ class BaseGen {
   TH3F *hCrossSec;
   TH1F *hCrossMax;
   TH1F *hCrossTot;
+  TF1 *f1Fermi;
   Double_t dConv;
   TLorentzVector ptot;
   TVector3 cm_to_lab, lab_to_cm;
@@ -49,6 +100,7 @@ class BaseGen {
   Float_t GetCross(Int_t, Int_t, Int_t);
   void Collision2B(BasePart&, BasePart&, BasePart&, BasePart&);
   void Decay2B(BasePart&, BasePart&, BasePart&);
+  void FermiModel(BasePart&);
   void SpecModel(BasePart&);
   void InitNtuple(Int_t, Int_t*);
   void SaveNtuple(TString);
@@ -69,7 +121,13 @@ BaseGen::BaseGen(TString name, TString target, TString base, Int_t beamlo, Int_t
   sTargName = target;
   sBaseName = base;
 
-  if(sProcName.Contains("Incoherent")) bIncoh = kTRUE;
+  if(sProcName.Contains("Incoherent")){
+    if(sTargName=="3He") f1Fermi = new TF1("f1Fermi",Fermi3He,0,10);
+    else if(sTargName=="4He") f1Fermi = new TF1("f1Fermi",Fermi4He,0,10);
+    else if(sTargName=="12C") f1Fermi = new TF1("f1Fermi",Fermi12C,0,10);
+    else if(sTargName=="16O") f1Fermi = new TF1("f1Fermi",Fermi12C,0,10);
+    bIncoh = kTRUE;
+  }
   else bIncoh = kFALSE;
 
   if(sProcName.Contains("Coherent")) bCoher = kTRUE;
@@ -479,6 +537,20 @@ void BaseGen::Decay2B(BasePart& k,BasePart& p1,BasePart& p2){
   p2.SetP4CM(ener,mom,(180-p1.ThetaCM),p1.PhiCM);
   p2.RotateCM(180);
   p2.BoostLab(cm_to_lab);
+
+};
+
+void BaseGen::FermiModel(BasePart& ki){
+
+  // Fermi Model for Incoherent reactions
+  // Takes input nucleon and determines a proper recoil energy and momentum
+
+  Float_t mom = f1Fermi->GetRandom();
+  Float_t ener = TMath::Sqrt(Sqr(mom)+Sqr(ki.Mass));
+
+  // Return nucleon with chosen energy and momentum
+
+  ki.SetP4Lab(ener, mom);
 
 };
 

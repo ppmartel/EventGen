@@ -204,9 +204,38 @@ int main()
   }
   // Incoherent
   else if(iTypeS==1){
+    /*
     iTargS = 4;
     if(iProcS!=2) iRecoS = 0;
     else iRecoS = 1;
+    */
+    cout << "Choose target:" << endl;
+    cout << "1) 3He" << endl;
+    cout << "2) 4He" << endl;
+    cout << "3) 12C" << endl;
+    cout << "4) 16O" << endl;
+
+    cin >> iTargS;
+    cout << "--------------------------------------------------" << endl;
+
+    if(iTargS<1 || iTargS>4){
+      cout << "Invalid target" << endl;
+      return 0;
+    }
+    iTargS++;
+
+    cout << "Choose recoil:" << endl;
+    cout << "1) p" << endl;
+    cout << "2) n" << endl;
+
+    cin >> iRecoS;
+    cout << "--------------------------------------------------" << endl;
+
+    if(iRecoS<1 || iRecoS>2){
+      cout << "Invalid recoil" << endl;
+      return 0;
+    }
+    iRecoS--;
   }
   // Coherent
   else{
