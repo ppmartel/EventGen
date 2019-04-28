@@ -13,7 +13,7 @@ class Pi0PGen : public BaseGen {
   TH2F *hPvP1, *hPvP1Lo, *hPvP1Hi, *hPvP2, *hPvP2Lo, *hPvP2Hi, *hMiM;
   TH2F *hTpvtp, *hTpvtpi, *htpvtpi;
  public:
-  Pi0PGen(TString, TString, TString, Float_t, Float_t, Int_t, Int_t, Int_t);
+  Pi0PGen(TString, TString, TString, TString, Float_t, Float_t, Int_t, Int_t, Int_t);
   ~Pi0PGen();
   void Init();
   void InitCoher();
@@ -22,7 +22,7 @@ class Pi0PGen : public BaseGen {
   void SaveHists(TString);
 };
 
-Pi0PGen::Pi0PGen(TString sName, TString sTarget, TString sBase, Float_t fTargMass, Float_t fRecoMass, Int_t iRecoG3id, Int_t beamlo, Int_t beamhi) : BaseGen(sName, sTarget, sBase, beamlo, beamhi), pPhoton("Photon",0), pTarget("Target",fTargMass), pPi0("Pi0",kMPI0_MEV), pRecoil("Recoil",fRecoMass), pDecay1("Decay1",0), pDecay2("Decay2",0) {
+Pi0PGen::Pi0PGen(TString sName, TString sTarget, TString sRecoil, TString sBase, Float_t fTargMass, Float_t fRecoMass, Int_t iRecoG3id, Int_t beamlo, Int_t beamhi) : BaseGen(sName, sTarget, sRecoil, sBase, beamlo, beamhi), pPhoton("Photon",0), pTarget("Target",fTargMass), pPi0("Pi0",kMPI0_MEV), pRecoil("Recoil",fRecoMass), pDecay1("Decay1",0), pDecay2("Decay2",0) {
 
   cout << "Constructing generator" << endl;
 

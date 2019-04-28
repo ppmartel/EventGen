@@ -13,7 +13,7 @@ class CompGen : public BaseGen {
   TH2F *hPvP, *hPvPLo, *hPvPHi, *hMiM;
 
  public:
-  CompGen(TString, TString, TString, Float_t, Float_t, Int_t, Int_t, Int_t);
+  CompGen(TString, TString, TString, TString, Float_t, Float_t, Int_t, Int_t, Int_t);
   ~CompGen();
   void Init();
   void InitCoher();
@@ -22,7 +22,7 @@ class CompGen : public BaseGen {
   void SaveHists(TString);
 };
 
-CompGen::CompGen(TString sName, TString sTarget, TString sBase, Float_t fTargMass, Float_t fRecoMass, Int_t iRecoG3id, Int_t beamlo, Int_t beamhi) : BaseGen(sName, sTarget, sBase, beamlo, beamhi), pPhoton("Photon",0), pTarget("Target",fTargMass), pScatter("Scatter",0), pRecoil("Recoil",fRecoMass) {
+CompGen::CompGen(TString sName, TString sTarget, TString sRecoil, TString sBase, Float_t fTargMass, Float_t fRecoMass, Int_t iRecoG3id, Int_t beamlo, Int_t beamhi) : BaseGen(sName, sTarget, sRecoil, sBase, beamlo, beamhi), pPhoton("Photon",0), pTarget("Target",fTargMass), pScatter("Scatter",0), pRecoil("Recoil",fRecoMass) {
 
   cout << "Constructing generator" << endl;
 
@@ -215,10 +215,15 @@ Bool_t CompGen::NewEvent(Float_t fBeamE){
   // For an incoherent process, use the previously determined directions of the
   // final state particles but determine the proper energies and momenta
   // through a spectral model
-  
+
   if(bIncoh){
     //SpecModel(pTarget);
-    FermiModel(pTarget);
+    bCheck = kTRUE;
+    while(bCheck){
+      FermiModel(pTarget);
+      ptot = pPhoton.P4 + pTarget.P4;
+      if((ptot.M() > 0) && (ptot.M2() > Sqr(pRecoil.Mass))) bCheck = kFALSE;
+    }
     Collision2B(pPhoton, pTarget, pScatter, pRecoil);    
   }
 

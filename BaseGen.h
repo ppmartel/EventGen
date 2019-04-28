@@ -59,6 +59,7 @@ class BaseGen {
  protected:
   TString sProcName;
   TString sTargName;
+  TString sRecoName;
   TString sBaseName;
   Bool_t bIncoh;
   Bool_t bCoher;
@@ -85,12 +86,15 @@ class BaseGen {
   TH1F *hCrossMax;
   TH1F *hCrossTot;
   TF1 *f1Fermi;
+  Float_t fMassP;
+  Float_t fMassS;
+  Float_t fMassT;
   Double_t dConv;
   TLorentzVector ptot;
   TVector3 cm_to_lab, lab_to_cm;
   Float_t vtx_x, vtx_y, vtx_z;
  public:
-  BaseGen(TString, TString, TString, Int_t, Int_t);
+  BaseGen(TString, TString, TString, TString, Int_t, Int_t);
   ~BaseGen();
   void SetPol(Float_t, Float_t, Float_t, Float_t, Float_t, Float_t);
   Double_t SetConv(Double_t);
@@ -113,19 +117,76 @@ class BaseGen {
   Float_t var[100];
 };
 
-BaseGen::BaseGen(TString name, TString target, TString base, Int_t beamlo, Int_t beamhi){
+BaseGen::BaseGen(TString name, TString target, TString recoil, TString base, Int_t beamlo, Int_t beamhi){
 
   // Set reaction information
 
   sProcName = name;
   sTargName = target;
+  sRecoName = recoil;
   sBaseName = base;
 
   if(sProcName.Contains("Incoherent")){
-    if(sTargName=="3He") f1Fermi = new TF1("f1Fermi",Fermi3He,0,10);
-    else if(sTargName=="4He") f1Fermi = new TF1("f1Fermi",Fermi4He,0,10);
-    else if(sTargName=="12C") f1Fermi = new TF1("f1Fermi",Fermi12C,0,10);
-    else if(sTargName=="16O") f1Fermi = new TF1("f1Fermi",Fermi12C,0,10);
+    if(sTargName=="3He"){
+      f1Fermi = new TF1("f1Fermi",Fermi3He,0,1000);
+      fMassT = kM_HE3_MEV;
+      if(sRecoName=="p"){
+	fMassS = kM_H2_MEV;
+	fMassP = kMP_MEV;
+      }
+      else{
+	cout << "Invalid quasi-free process" << endl;
+	gSystem->Exit(0);
+      }
+    }
+    else if(sTargName=="4He"){
+      f1Fermi = new TF1("f1Fermi",Fermi4He,0,1000);
+      fMassT = kM_HE4_MEV;
+      if(sRecoName=="p"){
+	fMassS = kM_H3_MEV;
+	fMassP = kMP_MEV;
+      }
+      else if(sRecoName=="n"){
+	fMassS = kM_HE3_MEV;
+	fMassP = kMN_MEV;
+      }
+      else{
+	cout << "Invalid quasi-free process" << endl;
+	gSystem->Exit(0);
+      }
+    }
+    else if(sTargName=="12C"){
+      f1Fermi = new TF1("f1Fermi",Fermi12C,0,1000);
+      fMassT = kM_C12_MEV;
+      if(sRecoName=="p"){
+	fMassS = kM_B11_MEV;
+	fMassP = kMP_MEV;
+      }
+      else if(sRecoName=="n"){
+	fMassS = kM_C11_MEV;
+	fMassP = kMN_MEV;
+      }
+      else{
+	cout << "Invalid quasi-free process" << endl;
+	gSystem->Exit(0);
+      }
+    }
+    else if(sTargName=="16O"){
+      f1Fermi = new TF1("f1Fermi",Fermi12C,0,1000);
+      fMassT = kM_O16_MEV;
+      if(sRecoName=="p"){
+	fMassS = kM_N15_MEV;
+	fMassP = kMP_MEV;
+      }
+      else if(sRecoName=="n"){
+	fMassS = kM_O15_MEV;
+	fMassP = kMN_MEV;
+      }
+      else{
+	cout << "Invalid quasi-free process" << endl;
+	gSystem->Exit(0);
+      }
+    }
     bIncoh = kTRUE;
   }
   else bIncoh = kFALSE;
@@ -545,12 +606,20 @@ void BaseGen::FermiModel(BasePart& ki){
   // Fermi Model for Incoherent reactions
   // Takes input nucleon and determines a proper recoil energy and momentum
 
-  Float_t mom = f1Fermi->GetRandom();
-  Float_t ener = TMath::Sqrt(Sqr(mom)+Sqr(ki.Mass));
+  Float_t massSqr = -1;
+  Float_t enerP, enerS, mom;
 
+  while(massSqr < 0){
+    mom = f1Fermi->GetRandom();
+    enerS = TMath::Sqrt(Sqr(mom)+Sqr(fMassS));
+    massSqr = (Sqr(fMassT-fMassS)-2*fMassT*(enerS-fMassS));
+  }
+
+  enerP = TMath::Sqrt(Sqr(mom)+massSqr);
+  
   // Return nucleon with chosen energy and momentum
 
-  ki.SetP4Lab(ener, mom);
+  ki.SetP4Lab(enerP, mom);
 
 };
 

@@ -13,7 +13,7 @@ class PiPNGen : public BaseGen {
   TH2F *hMiM;
   TH2F *hTpvtp, *hTpvtpi, *htpvtpi;
  public:
-  PiPNGen(TString, TString, TString, Float_t, Float_t, Int_t, Int_t, Int_t);
+  PiPNGen(TString, TString, TString, TString, Float_t, Float_t, Int_t, Int_t, Int_t);
   ~PiPNGen();
   void Init();
   Bool_t NewEvent(Float_t);
@@ -21,7 +21,7 @@ class PiPNGen : public BaseGen {
   void SaveHists(TString);
 };
 
-PiPNGen::PiPNGen(TString sName, TString sTarget, TString sBase, Float_t fTargMass, Float_t fRecoMass, Int_t iRecoG3id, Int_t beamlo, Int_t beamhi) : BaseGen(sName, sTarget, sBase, beamlo, beamhi), pPhoton("Photon",0), pTarget("Target",fTargMass), pPiP("PiP",kMPI_MEV), pRecoil("Recoil",fRecoMass) {
+PiPNGen::PiPNGen(TString sName, TString sTarget, TString sRecoil, TString sBase, Float_t fTargMass, Float_t fRecoMass, Int_t iRecoG3id, Int_t beamlo, Int_t beamhi) : BaseGen(sName, sTarget, sRecoil, sBase, beamlo, beamhi), pPhoton("Photon",0), pTarget("Target",fTargMass), pPiP("PiP",kMPI_MEV), pRecoil("Recoil",fRecoMass) {
 
   cout << "Constructing generator" << endl;
 

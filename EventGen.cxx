@@ -598,7 +598,7 @@ int main()
 
     // Create and initialize generator
 
-    CompGen *pgen = new CompGen(sName,sTarg[iTargS],sBase,fTargMass[iTargS],fRecoMass[iRecoS],iRecoG3id[iRecoS],iBeamLo,iBeamHi);
+    CompGen *pgen = new CompGen(sName,sTarg[iTargS],sReco[iRecoS],sBase,fTargMass[iTargS],fRecoMass[iRecoS],iRecoG3id[iRecoS],iBeamLo,iBeamHi);
     pgen->SetPol(fBeamT, fBeamL, fBeamP, fTargT, fTargL, fTargP);
     pgen->SetOut(kTRUE,kTRUE,kTRUE);
     pgen->Init();
@@ -651,7 +651,7 @@ int main()
 
     // Create and initialize generator
 
-    Pi0PGen *pgen = new Pi0PGen(sName,sTarg[iTargS],sBase,fTargMass[iTargS],fRecoMass[iRecoS],iRecoG3id[iRecoS],iBeamLo,iBeamHi);
+    Pi0PGen *pgen = new Pi0PGen(sName,sTarg[iTargS],sReco[iRecoS],sBase,fTargMass[iTargS],fRecoMass[iRecoS],iRecoG3id[iRecoS],iBeamLo,iBeamHi);
     pgen->SetPol(fBeamT, fBeamL, fBeamP, fTargT, fTargL, fTargP);
     pgen->SetOut(kTRUE,kTRUE,kTRUE);
     pgen->Init();
@@ -704,7 +704,7 @@ int main()
 
     // Create and initialize generator
 
-    PiPNGen *pgen = new PiPNGen(sName,sTarg[iTargS],sBase,fTargMass[iTargS],fRecoMass[iRecoS],iRecoG3id[iRecoS],iBeamLo,iBeamHi);
+    PiPNGen *pgen = new PiPNGen(sName,sTarg[iTargS],sReco[iRecoS],sBase,fTargMass[iTargS],fRecoMass[iRecoS],iRecoG3id[iRecoS],iBeamLo,iBeamHi);
     pgen->SetPol(fBeamT, fBeamL, fBeamP, fTargT, fTargL, fTargP);
     pgen->SetOut(kTRUE,kTRUE,kTRUE);
     pgen->Init();
